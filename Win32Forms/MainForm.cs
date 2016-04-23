@@ -37,6 +37,7 @@ namespace Hiale.Win32Forms
         {
             using (var dlg = new SaveFileDialog())
             {
+                dlg.OverwritePrompt = false;
                 dlg.Filter = @"Resource Files (*.rc)|*.rc|All Files (*.*)|*.*";
                 if (dlg.ShowDialog() != DialogResult.OK)
                     return;
@@ -152,7 +153,7 @@ namespace Hiale.Win32Forms
                     btnConvert.BeginInvoke(new Action(() => { btnConvert.Enabled = false; }));
                     var converter = new FormConverter(formType, dialogUnitCalculation.ToDialogUnits);
                     var result = converter.Convert();
-                    CopyToClipboard(result.DialogContent);
+                    //CopyToClipboard(result.DialogContent);
                     UpdateResourceFile(resourceFile, result);
                     btnConvert.BeginInvoke(new Action(() => { btnConvert.Enabled = true; }));
                 });

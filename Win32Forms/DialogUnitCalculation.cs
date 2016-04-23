@@ -12,16 +12,16 @@ namespace Hiale.Win32Forms
         private const string Gdi32 = "gdi32.dll";
 
         [DllImport(Gdi32, CharSet = CharSet.Auto)]
-        static extern bool GetTextMetrics(IntPtr hdc, out TEXTMETRIC lptm);
+        private static extern bool GetTextMetrics(IntPtr hdc, out TEXTMETRIC lptm);
 
         [DllImport(Gdi32, CharSet = CharSet.Auto)]
-        static extern bool GetTextExtentPoint32(IntPtr hdc, string lpString, int cbString, out SIZE lpSize);
+        private static extern bool GetTextExtentPoint32(IntPtr hdc, string lpString, int cbString, out SIZE lpSize);
 
         [DllImport(Gdi32, CharSet = CharSet.Auto)]
-        static extern IntPtr SelectObject(IntPtr hdc, IntPtr hgdiobj);
+        private static extern IntPtr SelectObject(IntPtr hdc, IntPtr hgdiobj);
 
         [DllImport(Gdi32, CharSet = CharSet.Auto)]
-        static extern bool DeleteObject(IntPtr hdc);
+        private static extern bool DeleteObject(IntPtr hdc);
 
         public delegate void CalculateDialogUnits(int pixelX, int pixelY, out int dialogUnitX, out int dialogUnitY);
 

@@ -11,11 +11,11 @@ namespace Hiale.Win32Forms
     {
         private class ResourceHeaderEntry
         {
-            public string Name { get; private set; }
+            public string Name { get; }
 
             public int Value { get; set; }
 
-            public int LineNumber { get; private set; }
+            public int LineNumber { get; }
 
             public ResourceHeaderEntry(string name, int value, int lineNumber)
             {
@@ -72,7 +72,7 @@ namespace Hiale.Win32Forms
             CreateLineMap();
         }
 
-        private string GenerateEntry(string name, int value)
+        private static string GenerateEntry(string name, int value)
         {
             var entry = "#define " + name;
             if (entry.Length < 40)

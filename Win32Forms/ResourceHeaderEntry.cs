@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
+﻿
 namespace Hiale.Win32Forms
 {
     public class ResourceHeaderEntry
@@ -13,11 +9,14 @@ namespace Hiale.Win32Forms
 
         public int LineNumber { get; }
 
-        public ResourceHeaderEntry(string name, int value, int lineNumber)
+        public bool Special { get; }
+
+        public ResourceHeaderEntry(string name, int value, int lineNumber, bool special = false)
         {
             Name = name;
             Value = value;
             LineNumber = lineNumber;
+            Special = special;
         }
 
         public override string ToString()

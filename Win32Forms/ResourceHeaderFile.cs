@@ -107,25 +107,29 @@ namespace Hiale.Win32Forms
             {
                 var regEx = new Regex(@"#define\s+(\S*)\s+(\d+)");
                 var match = regEx.Match(_lines[i]);
-                if (match.Success)
-                {
-                    int value;
-                    if (int.TryParse(match.Groups[2].Value, out value))
-                        Entries.Add(new ResourceHeaderEntry(match.Groups[1].Value, value, i));
-                }
+                if (!match.Success)
+                    continue;
+                int value;
+                if (!int.TryParse(match.Groups[2].Value, out value))
+                    continue;
+                var name = match.Groups[1].Value;
+                var special = name == "_APS_NEXT_RESOURCE_VALUE" || name == "_APS_NEXT_COMMAND_VALUE" || name == "_APS_NEXT_CONTROL_VALUE" || name == "_APS_NEXT_SYMED_VALUE";
+                Entries.Add(new ResourceHeaderEntry(match.Groups[1].Value, value, i, special));
             }
         }
 
-        private int FindLine(int newId) //ToDo: Controls are written ahead of Resources
+        private int FindLine(int newId)
         {
+            var lineNumber = -1;
             foreach (var entry in Entries)
             {
-                if (entry.Name == "_APS_NEXT_RESOURCE_VALUE" || entry.Name == "_APS_NEXT_COMMAND_VALUE" || entry.Name == "_APS_NEXT_CONTROL_VALUE" || entry.Name == "_APS_NEXT_SYMED_VALUE")
+                if (entry.Special)
                     continue;
                 if (newId < entry.Value)
                     return entry.LineNumber;
+                lineNumber = entry.LineNumber + 1;
             }
-            return 4;
+            return lineNumber < 0 ? 4 : lineNumber;
         }
 
         private void IncrementValue(string name)

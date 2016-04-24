@@ -1,9 +1,7 @@
 ﻿using System;
-using System.CodeDom;
 using System.Drawing;
 using System.IO;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -18,7 +16,12 @@ namespace Hiale.Win32Forms
 
         private void lstForms_SelectedIndexChanged(object sender, EventArgs e)
         {
-            btnConvert.Enabled = lstForms.SelectedItem != null;
+            EnableConvertButton();
+        }
+
+        private void txtResource_TextChanged(object sender, EventArgs e)
+        {
+            EnableConvertButton();
         }
 
         private void btnBrowseAssembly_Click(object sender, EventArgs e)
@@ -42,7 +45,6 @@ namespace Hiale.Win32Forms
                 if (dlg.ShowDialog() != DialogResult.OK)
                     return;
                 txtResource.Text = dlg.FileName;
-                //SelectResource(dlg.FileName);
             }
         }
 
@@ -54,12 +56,28 @@ namespace Hiale.Win32Forms
             }
         }
 
-        private void txtResource_KeyUp(object sender, KeyEventArgs e)
+        private void btnConvert_Click(object sender, EventArgs e)
         {
-            if (e.KeyCode == Keys.Enter)
+            var formResult = lstForms.SelectedItem as FormResult;
+            if (formResult?.Type == null)
+                return;
+            Convert(formResult.Type);
+        }
+
+        private void EnableConvertButton()
+        {
+            bool resourceFileValid;
+            try
             {
-                //SelectResource(txtResource.Text);
+                // ReSharper disable once ObjectCreationAsStatement
+                new FileInfo(txtResource.Text);
+                resourceFileValid = true;
             }
+            catch (Exception)
+            {
+                resourceFileValid = false;
+            }
+            btnConvert.Enabled = lstForms.SelectedItem != null && resourceFileValid;
         }
 
         private void LoadAssembly(string fileName)
@@ -85,50 +103,15 @@ namespace Hiale.Win32Forms
             }
         }
 
-        private void SelectResource(string fileName)
-        {
-            try
-            {
-                var resourceFile = new ResourceFile(fileName);
-                if (!File.Exists(fileName))
-                {
-                    resourceFile.CreateNew();
-                }
-                resourceFile.IsValid();
-
-                //var assembly = Assembly.LoadFile(fileName);
-                //lstForms.Items.Clear();
-                //Task.Factory.StartNew(() =>
-                //{
-                //    //foreach (var result in FormFinder.FindForms(assembly))
-                //    //{
-                //    //    lstForms.BeginInvoke(new Action(() => { lstForms.Items.Add(result); }));
-                //    //}
-                //});
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-            }
-        }
-
-        private void btnConvert_Click(object sender, EventArgs e)
-        {
-            var formResult = lstForms.SelectedItem as FormResult;
-            if (formResult?.Type == null)
-                return;
-            Convert(formResult.Type);
-        }
 
         private void Convert(Type formType)
         {
             try
             {
-                if (!File.Exists(txtResource.Text))
-                    throw new NotImplementedException("Please sleect an existing Resource File.");
-                var resourceFile = new ResourceFile(txtResource.Text);
+                var resourceFile = new ResourceFile(txtResource.Text, !File.Exists(txtResource.Text));
+
                 if (!resourceFile.IsValid())
-                    throw new Exception("Resource File is invalid.");
+                    throw new Exception("Resource File is not valid.");
 
                 //execute these GDI methods on the GUI thread
                 Graphics graphics = null;
@@ -151,10 +134,10 @@ namespace Hiale.Win32Forms
                 Task.Factory.StartNew(() =>
                 {
                     btnConvert.BeginInvoke(new Action(() => { btnConvert.Enabled = false; }));
-                    var converter = new FormConverter(formType, dialogUnitCalculation.ToDialogUnits);
+                    var converter = new FormConverter(formType, dialogUnitCalculation.ToDialogUnits, resourceFile.IsIdAvailable);
                     var result = converter.Convert();
-                    //CopyToClipboard(result.DialogContent);
-                    UpdateResourceFile(resourceFile, result);
+                    resourceFile.Patch(result);
+                    ShowMessage();
                     btnConvert.BeginInvoke(new Action(() => { btnConvert.Enabled = true; }));
                 });
             }
@@ -167,22 +150,10 @@ namespace Hiale.Win32Forms
             }
         }
 
-        private void UpdateResourceFile(ResourceFile resourceFile, ConvertResult result)
+        
+        private void ShowMessage()
         {
-            resourceFile.Patch(result);
-
-        }
-
-        private void CopyToClipboard(string text)
-        {
-            var clipboardThread = new Thread(() =>
-            {
-                Clipboard.SetText(text);
-                Invoke(new Action(() => { MessageBox.Show(@"Exported to Clipboard", Text, MessageBoxButtons.OK, MessageBoxIcon.Information); }));
-            });
-            clipboardThread.SetApartmentState(ApartmentState.STA);
-            clipboardThread.IsBackground = false;
-            clipboardThread.Start();
+            Invoke(new Action(() => { MessageBox.Show(@"Done!", Text, MessageBoxButtons.OK, MessageBoxIcon.Information); }));
         }
     }
 }

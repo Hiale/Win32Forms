@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -11,22 +13,55 @@ namespace Hiale.Win32Forms
 
         private ResourceHeaderFile _resourceHeaderFile;
         private string _fileContent;
+        private readonly bool _embedded;
 
-        public ResourceFile(string fileName)
+        public ResourceFile(string fileName, bool embedded = false)
         {
             FileName = fileName;
-            Read();
+            _embedded = embedded;
+            if (embedded)
+                ReadEmbedded();
+            else
+                Read();
         }
 
         public bool IsValid()
         {
-            return _resourceHeaderFile != null;
+            return _resourceHeaderFile != null && _resourceHeaderFile.IsValid();
         }
 
         private void Read()
         {
-            _fileContent = File.ReadAllText(@FileName, Encoding.UTF8);
+            _fileContent = File.ReadAllText(FileName, Encoding.UTF8);
             FindHeaderFile();
+        }
+
+        private void ReadEmbedded()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = GetType().Namespace + ".Template.Resource.rc";
+            using (var stream = assembly.GetManifestResourceStream(resourceName))
+            using (var reader = new StreamReader(stream, Encoding.UTF8))
+            {
+                _fileContent = reader.ReadToEnd();
+            }
+            const string defaultResourceHeaderFileName = "resource{0}.h";
+
+            var resourceHeaderFileName = Path.Combine(Path.GetDirectoryName(FileName), string.Format(defaultResourceHeaderFileName, string.Empty));
+            if (File.Exists(resourceHeaderFileName))
+            {
+                int index = 1;
+                while (true)
+                {
+                    resourceHeaderFileName = Path.Combine(Path.GetDirectoryName(FileName), string.Format(defaultResourceHeaderFileName, index));
+                    index++;
+                    if (File.Exists(resourceHeaderFileName))
+                        continue;
+                    _fileContent = _fileContent.Replace(string.Format(defaultResourceHeaderFileName, string.Empty), string.Format(defaultResourceHeaderFileName, index));
+                    break;
+                }
+            }
+            _resourceHeaderFile = new ResourceHeaderFile(resourceHeaderFileName, true);
         }
 
         private void Write()
@@ -40,11 +75,6 @@ namespace Hiale.Win32Forms
             File.Copy(fileName, backupFile);
         }
 
-        public void CreateNew()
-        {
-            throw new NotImplementedException();
-        }
-
         public void Patch(ConvertResult result)
         {
             //patch header file
@@ -53,7 +83,8 @@ namespace Hiale.Win32Forms
             {
                 _resourceHeaderFile.AddControl(newControlValue);
             }
-            CreateBackup(_resourceHeaderFile.FileName);
+            if (!_embedded)
+                CreateBackup(_resourceHeaderFile.FileName);
             _resourceHeaderFile.Write();
 
             //patch resource file
@@ -66,8 +97,14 @@ namespace Hiale.Win32Forms
             {
                 _fileContent = CreateNewDialogSection(result.DialogContent);
             }
-            CreateBackup(FileName);
+            if (!_embedded)
+                CreateBackup(FileName);
             Write();
+        }
+
+        public bool IsIdAvailable(string id)
+        {
+            return _resourceHeaderFile.Entries.All(resourceHeaderEntry => resourceHeaderEntry.Name != id);
         }
 
         private string CreateNewDialogSection(string dialogContent)

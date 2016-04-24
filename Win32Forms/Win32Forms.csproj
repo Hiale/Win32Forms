@@ -58,6 +58,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ResourceFile.cs" />
+    <Compile Include="ResourceHeaderEntry.cs" />
     <Compile Include="ResourceHeaderFile.cs" />
     <EmbeddedResource Include="MainForm.resx">
       <Generator>ResXFileCodeGeneratorEx</Generator>
@@ -82,6 +83,11 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <EmbeddedResource Include="Template\resource.h" />
+    <EmbeddedResource Include="Template\Resource.rc" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -120,7 +120,7 @@
             this.txtResource.Name = "txtResource";
             this.txtResource.Size = new System.Drawing.Size(201, 20);
             this.txtResource.TabIndex = 3;
-            this.txtResource.KeyUp += new System.Windows.Forms.KeyEventHandler(this.txtResource_KeyUp);
+            this.txtResource.TextChanged += new System.EventHandler(this.txtResource_TextChanged);
             // 
             // btnConvert
             // 

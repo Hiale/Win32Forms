@@ -11,17 +11,19 @@ namespace Hiale.Win32Forms
         private readonly Dictionary<string, int> _commandIdMap;
         private readonly Type _formType;
         private readonly DialogUnitCalculation.CalculateDialogUnits _toDialogUnits;
+        private readonly Func<string, bool> _isIdAvailable; //returns true if the given name is not yet present and can be used.
 
         private Form _formInstance;
         private ConvertResult _result;
 
         public bool UseControlName { get; set; }
 
-        public FormConverter(Type formType, DialogUnitCalculation.CalculateDialogUnits toDialogUnits)
+        public FormConverter(Type formType, DialogUnitCalculation.CalculateDialogUnits toDialogUnits, Func<string, bool> isIdAvailable)
         {
             _stringBuilder = new StringBuilder();
             _commandIdMap = new Dictionary<string, int>();
             _toDialogUnits = toDialogUnits;
+            _isIdAvailable = isIdAvailable;
             UseControlName = true;
             _formType = formType;
         }
@@ -35,11 +37,34 @@ namespace Hiale.Win32Forms
             ProcessControl(_formInstance);
             _stringBuilder.AppendLine("END");
             _result.DialogContent = _stringBuilder.ToString();
-            if (UseControlName && !string.IsNullOrEmpty(_formInstance.Name))
-                _result.NewResourceValue = "IDD_" + _formInstance.Name.ToUpper();
-            else
-                _result.NewResourceValue = "IDD_DIALOG";
+            _result.NewResourceValue = GetDialogId();
             return _result;
+        }
+
+        private string GetDialogId()
+        {
+            string dialogId;
+            if (UseControlName && !string.IsNullOrEmpty(_formInstance.Name))
+            {
+                dialogId = "IDD_" + _formInstance.Name.ToUpper();
+                if (_isIdAvailable(dialogId))
+                    return dialogId;
+            }
+            else
+            {
+                dialogId = "IDD_DIALOG";
+                if (_isIdAvailable(dialogId))
+                    return dialogId;
+                var index = 1;
+                while (true)
+                {
+                    dialogId = "IDD_DIALOG" + index;
+                    index++;
+                    if (_isIdAvailable(dialogId))
+                        break;
+                }
+            }
+            return dialogId;
         }
 
         private static bool IsSameOrSubclass(Type targetClass, Type baseClass)
@@ -54,7 +79,7 @@ namespace Hiale.Win32Forms
             _stringBuilder.Append(new string(' ', 20 - (4 + controlType.Length)));
         }
 
-        private string GetStyles(List<string> styles)
+        private static string GetStyles(ICollection<string> styles)
         {
             var style = string.Empty;
             if (styles.Count > 0)
@@ -68,11 +93,11 @@ namespace Hiale.Win32Forms
             AddControlType(controlType);
             if (controlType.ToUpper() == "CONTROL")
             {
-                _stringBuilder.AppendLine($"\"{control.Text}\",{controlId},\"Button\",{style},{ProcessDimension(control)}");
+                _stringBuilder.AppendLine($"\"{control.Text}\",{controlId},\"Button\",{style},{CalculateDimension(control)}");
             }
             else
             {
-                _stringBuilder.AppendLine($"\"{control.Text}\",{controlId},{ProcessDimension(control)}{style}");
+                _stringBuilder.AppendLine($"\"{control.Text}\",{controlId},{CalculateDimension(control)}{style}");
             }
         }
 
@@ -117,7 +142,7 @@ namespace Hiale.Win32Forms
             }
         }
 
-        private string ProcessDimension(Control control)
+        private string CalculateDimension(Control control)
         {
             int x, y, width, height;
             if (control.Parent == null)
@@ -133,7 +158,7 @@ namespace Hiale.Win32Forms
             return $"{x},{y},{width},{height}";
         }
 
-        private string ProcessId(Control control, string defaultName)
+        private string GetId(Control control, string defaultName)
         {
             string commandId;
             if (UseControlName)
@@ -141,23 +166,32 @@ namespace Hiale.Win32Forms
                 if (!string.IsNullOrEmpty(control.Name))
                 {
                     commandId = control.Name.ToUpper();
+                    if (_isIdAvailable(commandId))
+                    {
+                        _result.NewControlValues.Add(commandId);
+                        return commandId;
+                    }
+                }
+            }
+            while (true)
+            {
+                int value;
+                if (_commandIdMap.TryGetValue(defaultName, out value))
+                {
+                    _commandIdMap[defaultName] = ++value;
+                }
+                else
+                {
+                    value = 1;
+                    _commandIdMap.Add(defaultName, value);
+                }
+                commandId = $"IDC_{defaultName}{value}";
+                if (_isIdAvailable(commandId))
+                { 
                     _result.NewControlValues.Add(commandId);
                     return commandId;
                 }
             }
-            int value;
-            if (_commandIdMap.TryGetValue(defaultName, out value))
-            {
-                _commandIdMap[defaultName] = ++value;
-            }
-            else
-            {
-                value = 1;
-                _commandIdMap.Add(defaultName, value);
-            }
-            commandId = $"IDC_{defaultName}{value}";
-            _result.NewControlValues.Add(commandId);
-            return commandId;
         }
 
         private static List<string> ProcessCommonStyles(Control control)
@@ -196,7 +230,7 @@ namespace Hiale.Win32Forms
         private void ProcessForm(Form control)
         {
             var dialogName = "IDD_" + control.GetType().Name.ToUpper();
-            _stringBuilder.AppendLine($"{dialogName} DIALOGEX {ProcessDimension(control)}");
+            _stringBuilder.AppendLine($"{dialogName} DIALOGEX {CalculateDimension(control)}");
             _stringBuilder.AppendLine("STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU"); //ToDo
             _stringBuilder.AppendLine($"CAPTION \"{control.Text}\"");
             _stringBuilder.AppendLine($"FONT 8, \"MS Shell Dlg\", 0, 0, 0x1"); //ToDo
@@ -205,7 +239,7 @@ namespace Hiale.Win32Forms
         private void ProcessButton(Button control, Form form)
         {
             var styles = ProcessCommonStyles(control);
-            AddControl(control, control.Equals(form.AcceptButton) ? "DEFPUSHBUTTON" : "PUSHBUTTON", ProcessId(control, "BUTTON"), styles);
+            AddControl(control, control.Equals(form.AcceptButton) ? "DEFPUSHBUTTON" : "PUSHBUTTON", GetId(control, "BUTTON"), styles);
         }
 
         private void ProcessLabel(Label control)
@@ -218,8 +252,8 @@ namespace Hiale.Win32Forms
         {
             var styles = ProcessCommonStyles(control);
             AddControlType("EDITTEXT");
-            _stringBuilder.Append(ProcessId(control, "EDIT"));
-            _stringBuilder.Append(ProcessDimension(control));
+            _stringBuilder.Append(GetId(control, "EDIT") + ",");
+            _stringBuilder.Append(CalculateDimension(control));
             _stringBuilder.Append(GetStyles(styles));
             _stringBuilder.Append(Environment.NewLine);
         }
@@ -228,14 +262,14 @@ namespace Hiale.Win32Forms
         {
             var styles = ProcessCommonStyles(control);
             styles.Add(control.ThreeState ? "BS_AUTO3STATE" : "BS_AUTOCHECKBOX");
-            AddControl(control, "CONTROL", ProcessId(control, "CHECK"), styles);
+            AddControl(control, "CONTROL", GetId(control, "CHECK"), styles);
         }
 
         private void ProcessRadioButton(RadioButton control)
         {
             var styles = ProcessCommonStyles(control);
             styles.Add("BS_AUTORADIOBUTTON");
-            AddControl(control, "CONTROL", ProcessId(control, "RADIO"), styles);
+            AddControl(control, "CONTROL", GetId(control, "RADIO"), styles);
         }
 
     }

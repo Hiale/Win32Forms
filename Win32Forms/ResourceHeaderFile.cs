@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -9,46 +10,29 @@ namespace Hiale.Win32Forms
 {
     public class ResourceHeaderFile
     {
-        private class ResourceHeaderEntry
-        {
-            public string Name { get; }
-
-            public int Value { get; set; }
-
-            public int LineNumber { get; }
-
-            public ResourceHeaderEntry(string name, int value, int lineNumber)
-            {
-                Name = name;
-                Value = value;
-                LineNumber = lineNumber;
-            }
-
-            public override string ToString()
-            {
-                return $"[{LineNumber}] {Name}: {Value}";
-            }
-        }
-
         private const string NextResourceValue = "_APS_NEXT_RESOURCE_VALUE";
         private const string NextControlValue = "_APS_NEXT_CONTROL_VALUE";
 
+        private List<string> _lines;
+
         public string FileName { get; }
 
-        private List<string> _lines; 
-        private readonly List<ResourceHeaderEntry> _lineMap; 
+        public List<ResourceHeaderEntry> Entries { get; }
 
-        public ResourceHeaderFile(string fileName)
+        public ResourceHeaderFile(string fileName, bool embedded = false)
         {
             _lines = new List<string>();
-            _lineMap = new List<ResourceHeaderEntry>();
+            Entries = new List<ResourceHeaderEntry>();
             FileName = fileName;
-            Read();
+            if (embedded)
+                ReadEmbedded();
+            else
+                Read();
         }
 
         public bool IsValid()
         {
-            return true;
+            return GetNextValue(NextResourceValue) > -1 && GetNextValue(NextControlValue) > -1;
         }
 
         public void AddResource(string name)
@@ -72,6 +56,22 @@ namespace Hiale.Win32Forms
             CreateLineMap();
         }
 
+        private void ReadEmbedded()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = GetType().Namespace + ".Template.resource.h";
+            using (var stream = assembly.GetManifestResourceStream(resourceName))
+            using (var reader = new StreamReader(stream, Encoding.UTF8))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    _lines.Add(line);
+                }
+            }
+            CreateLineMap();
+        }
+
         private static string GenerateEntry(string name, int value)
         {
             var entry = "#define " + name;
@@ -83,6 +83,8 @@ namespace Hiale.Win32Forms
         private void AddEntry(string type, string name)
         {
             var value = GetNextValue(type);
+            if (value < 0)
+                throw new Exception("Invalid Resource Header File.");
             var line = FindLine(value);
             _lines.Insert(line, GenerateEntry(name, value));
             CreateLineMap();
@@ -91,16 +93,16 @@ namespace Hiale.Win32Forms
 
         private int GetNextValue(string name)
         {
-            foreach (var entry in _lineMap.Where(entry => entry.Name == name))
+            foreach (var entry in Entries.Where(entry => entry.Name == name))
             {
                 return entry.Value;
             }
-            throw new Exception("Invalid Resource Header File");
+            return -1;
         }
 
         private void CreateLineMap()
         {
-            _lineMap.Clear();
+            Entries.Clear();
             for (var i = 0; i < _lines.Count; i++)
             {
                 var regEx = new Regex(@"#define\s+(\S*)\s+(\d+)");
@@ -109,28 +111,26 @@ namespace Hiale.Win32Forms
                 {
                     int value;
                     if (int.TryParse(match.Groups[2].Value, out value))
-                    {
-                        _lineMap.Add(new ResourceHeaderEntry(match.Groups[1].Value, value, i));
-                    }
+                        Entries.Add(new ResourceHeaderEntry(match.Groups[1].Value, value, i));
                 }
             }
         }
 
-        private int FindLine(int newId)
+        private int FindLine(int newId) //ToDo: Controls are written ahead of Resources
         {
-            foreach (var entry in _lineMap)
+            foreach (var entry in Entries)
             {
+                if (entry.Name == "_APS_NEXT_RESOURCE_VALUE" || entry.Name == "_APS_NEXT_COMMAND_VALUE" || entry.Name == "_APS_NEXT_CONTROL_VALUE" || entry.Name == "_APS_NEXT_SYMED_VALUE")
+                    continue;
                 if (newId < entry.Value)
-                {
                     return entry.LineNumber;
-                }
             }
             return 4;
         }
 
         private void IncrementValue(string name)
         {
-            foreach (var entry in _lineMap.Where(entry => entry.Name == name))
+            foreach (var entry in Entries.Where(entry => entry.Name == name))
             {
                 var newValue = entry.Value + 1;
                 _lines[entry.LineNumber] = _lines[entry.LineNumber].Replace(entry.Value.ToString(), newValue.ToString());

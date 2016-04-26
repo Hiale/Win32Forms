@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
@@ -41,32 +43,6 @@ namespace Hiale.Win32Forms
             return _result;
         }
 
-        private string GetDialogId()
-        {
-            string dialogId;
-            if (UseControlName && !string.IsNullOrEmpty(_formInstance.Name))
-            {
-                dialogId = "IDD_" + _formInstance.Name.ToUpper();
-                if (_isIdAvailable(dialogId))
-                    return dialogId;
-            }
-            else
-            {
-                dialogId = "IDD_DIALOG";
-                if (_isIdAvailable(dialogId))
-                    return dialogId;
-                var index = 1;
-                while (true)
-                {
-                    dialogId = "IDD_DIALOG" + index;
-                    index++;
-                    if (_isIdAvailable(dialogId))
-                        break;
-                }
-            }
-            return dialogId;
-        }
-
         private static bool IsSameOrSubclass(Type targetClass, Type baseClass)
         {
             return targetClass.IsSubclassOf(baseClass) || targetClass == baseClass;
@@ -79,26 +55,13 @@ namespace Hiale.Win32Forms
             _stringBuilder.Append(new string(' ', 20 - (4 + controlType.Length)));
         }
 
-        private static string GetStyles(ICollection<string> styles)
-        {
-            var style = string.Empty;
-            if (styles.Count > 0)
-                style = "," + string.Join(" | ", styles);
-            return style;
-        }
-
-        private void AddControl(Control control, string controlType, string controlId, List<string> styles)
+        private void AddControl(Control control, string controlType, string controlId, HashSet<string> styles)
         {
             var style = GetStyles(styles);
             AddControlType(controlType);
-            if (controlType.ToUpper() == "CONTROL")
-            {
-                _stringBuilder.AppendLine($"\"{control.Text}\",{controlId},\"Button\",{style},{CalculateDimension(control)}");
-            }
-            else
-            {
-                _stringBuilder.AppendLine($"\"{control.Text}\",{controlId},{CalculateDimension(control)}{style}");
-            }
+            _stringBuilder.AppendLine(controlType.ToUpper() == "CONTROL"
+                ? $"\"{control.Text}\",{controlId},\"Button\"{style},{CalculateDimension(control)}"
+                : $"\"{control.Text}\",{controlId},{CalculateDimension(control)}{style}");
         }
 
         private void ProcessControl(Control control)
@@ -122,7 +85,7 @@ namespace Hiale.Win32Forms
             }
             else if (IsSameOrSubclass(control.GetType(), typeof(GroupBox)))
             {
-                AddControl(control, "GROUPBOX", "IDC_STATIC", ProcessCommonStyles(control));
+                ProcessGroupBox(control as GroupBox);
             }
             else if (IsSameOrSubclass(control.GetType(), typeof(CheckBox)))
             {
@@ -132,6 +95,10 @@ namespace Hiale.Win32Forms
             {
                 ProcessRadioButton(control as RadioButton);
             }
+            else if (IsSameOrSubclass(control.GetType(), typeof(ComboBox)))
+            {
+                ProcessComboBox(control as ComboBox);
+            }
             else
             {
                 System.Diagnostics.Debug.WriteLine($"Control Type {control.GetType()} not implemented.");
@@ -140,22 +107,6 @@ namespace Hiale.Win32Forms
             {
                 ProcessControl(childControl);
             }
-        }
-
-        private string CalculateDimension(Control control)
-        {
-            int x, y, width, height;
-            if (control.Parent == null)
-            {
-                _toDialogUnits(control.Location.X, control.Location.Y, out x, out y);
-            }
-            else
-            {
-                var locationOnForm = control.FindForm().PointToClient(control.Parent.PointToScreen(control.Location));
-                _toDialogUnits(locationOnForm.X, locationOnForm.Y, out x, out y);
-            }
-            _toDialogUnits(control.ClientSize.Width, control.ClientSize.Height, out width, out height);
-            return $"{x},{y},{width},{height}";
         }
 
         private string GetId(Control control, string defaultName)
@@ -194,63 +145,234 @@ namespace Hiale.Win32Forms
             }
         }
 
-        private static List<string> ProcessCommonStyles(Control control)
+        private string GetDialogId()
         {
-            var styles = new List<string>();
+            string dialogId;
+            if (UseControlName && !string.IsNullOrEmpty(_formInstance.Name))
+            {
+                dialogId = "IDD_" + _formInstance.Name.ToUpper();
+                if (_isIdAvailable(dialogId))
+                    return dialogId;
+            }
+            else
+            {
+                dialogId = "IDD_DIALOG";
+                if (_isIdAvailable(dialogId))
+                    return dialogId;
+                var index = 1;
+                while (true)
+                {
+                    dialogId = "IDD_DIALOG" + index;
+                    index++;
+                    if (_isIdAvailable(dialogId))
+                        break;
+                }
+            }
+            return dialogId;
+        }
+
+        private string CalculateDimension(Control control)
+        {
+            int x, y, width, height;
+            if (control.Parent == null)
+            {
+                _toDialogUnits(control.Location.X, control.Location.Y, out x, out y);
+            }
+            else
+            {
+                // ReSharper disable once PossibleNullReferenceException
+                var locationOnForm = control.FindForm().PointToClient(control.Parent.PointToScreen(control.Location));
+                _toDialogUnits(locationOnForm.X, locationOnForm.Y, out x, out y);
+            }
+            _toDialogUnits(control.ClientSize.Width, control.ClientSize.Height, out width, out height);
+            return $"{x},{y},{width},{height}";
+        }
+
+        private static HashSet<string> GetCommonStyles(Control control)
+        {
+            var styles = new HashSet<string>();
             //if (!control.Visible)
             //    styles.Add("NOT WS_VISIBLE");
             if (!control.Enabled)
                 styles.Add("WS_DISABLED");
+            if (!control.TabStop)
+                styles.Add("NOT WS_TABSTOP");
             return styles;
+        }
 
-            //Horizontal Alignment
-            //Default -> ""
-            //Left -> BS_LEFT
-            //Right -> BS_RIGHT
-            //Center -> BS_CENTER
+        private static void GetContentAllignmentStyle(ContentAlignment contentAlignment, IEnumerable<string> defaultStyles, HashSet<string> styles)
+        {
+            switch (contentAlignment)
+            {
+                case ContentAlignment.TopLeft:
+                    styles.Add("BS_TOP");
+                    styles.Add("BS_LEFT");
+                    break;
+                case ContentAlignment.TopCenter:
+                    styles.Add("BS_TOP");
+                    styles.Add("BS_CENTER");
+                    break;
+                case ContentAlignment.TopRight:
+                    styles.Add("BS_TOP");
+                    styles.Add("BS_RIGHT");
+                    break;
+                case ContentAlignment.MiddleLeft:
+                    styles.Add("BS_VCENTER");
+                    styles.Add("BS_LEFT");
+                    break;
+                case ContentAlignment.MiddleCenter:
+                    styles.Add("BS_VCENTER");
+                    styles.Add("BS_CENTER");
+                    break;
+                case ContentAlignment.MiddleRight:
+                    styles.Add("BS_VCENTER");
+                    styles.Add("BS_RIGHT");
+                    break;
+                case ContentAlignment.BottomLeft:
+                    styles.Add("BS_BOTTOM");
+                    styles.Add("BS_LEFT");
+                    break;
+                case ContentAlignment.BottomCenter:
+                    styles.Add("BS_BOTTOM");
+                    styles.Add("BS_CENTER");
+                    break;
+                case ContentAlignment.BottomRight:
+                    styles.Add("BS_BOTTOM");
+                    styles.Add("BS_RIGHT");
+                    break;
+            }
+            foreach (var defaultStyle in defaultStyles)
+            {
+                styles.Remove(defaultStyle);
+            }
+        }
 
-            //Vertical Alignment
-            //Default -> ""
-            //Top -> BS_TOP
-            //Bottom -> BS_BOTTOM
-            //Center -> BS_VCENTER
-
-            //Default Button
-            //False -> PUSHBUTTON
-            //True -> DEFPUSHBUTTON
-
-            //Multiline -> BS_MULTILINE
-
-            //ID -> IDOK
-
-            //Right Align Text -> WS_EX_RIGHT   ???
-
+        private static string GetStyles(ICollection<string> styles, bool leadingComma = true)
+        {
+            var style = string.Empty;
+            if (styles.Count > 0)
+                style = (leadingComma ? "," : string.Empty) + string.Join(" | ", styles);
+            return style;
         }
 
         private void ProcessForm(Form control)
         {
-            var dialogName = "IDD_" + control.GetType().Name.ToUpper();
+            //var dialogName = "IDD_" + control.GetType().Name.ToUpper();
+            var dialogName = GetDialogId();
+
+            var styles = new HashSet<string>();
+            var exStyles = new HashSet<string>();
+            styles.Add("DS_SETFONT");
+            styles.Add("WS_POPUP");
+            switch (control.FormBorderStyle)
+            {
+                case FormBorderStyle.None:
+                    //empty
+                    break;
+                case FormBorderStyle.FixedSingle:
+                    styles.Add("WS_CAPTION");
+                    styles.Add("WS_SYSMENU");
+                    break;
+                case FormBorderStyle.Fixed3D:
+                    exStyles.Add("WS_EX_STATICEDGE");
+                    styles.Add("WS_CAPTION");
+                    styles.Add("WS_SYSMENU");
+                    break;
+                case FormBorderStyle.FixedDialog:
+                    styles.Add("DS_MODALFRAME");
+                    styles.Add("WS_CAPTION");
+                    styles.Add("WS_SYSMENU");
+                    break;
+                case FormBorderStyle.Sizable:
+                    styles.Add("WS_THICKFRAME");
+                    styles.Add("WS_CAPTION");
+                    styles.Add("WS_SYSMENU");
+                    break;
+                case FormBorderStyle.FixedToolWindow:
+                    styles.Add("WS_CAPTION");
+                    styles.Add("WS_SYSMENU");
+                    exStyles.Add("WS_EX_TOOLWINDOW");
+                    break;
+                case FormBorderStyle.SizableToolWindow:
+                    styles.Add("WS_CAPTION");
+                    styles.Add("WS_SYSMENU");
+                    styles.Add("WS_THICKFRAME");
+                    exStyles.Add("WS_EX_TOOLWINDOW");
+                    break;
+            }
+            if (control.FormBorderStyle == FormBorderStyle.FixedSingle ||
+                control.FormBorderStyle == FormBorderStyle.Fixed3D ||
+                control.FormBorderStyle == FormBorderStyle.FixedDialog ||
+                control.FormBorderStyle == FormBorderStyle.Sizable)
+            {
+                if (control.MinimizeBox)
+                    styles.Add("WS_MINIMIZEBOX");
+                if (control.MaximizeBox)
+                    styles.Add("WS_MAXIMIZEBOX");
+            }
+            if (!control.Enabled)
+                styles.Add("WS_DISABLED");
+            if (control.TopMost)
+                styles.Add("DS_SYSMODAL");
+            if (control.ShowInTaskbar)
+                exStyles.Add("WS_EX_APPWINDOW");
+            if (control.StartPosition == FormStartPosition.CenterScreen ||
+                control.StartPosition == FormStartPosition.CenterParent)
+                styles.Add("DS_CENTER");
+
             _stringBuilder.AppendLine($"{dialogName} DIALOGEX {CalculateDimension(control)}");
-            _stringBuilder.AppendLine("STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU"); //ToDo
+            _stringBuilder.AppendLine("STYLE " + GetStyles(styles, false));
+            if (exStyles.Any())
+                _stringBuilder.AppendLine("EXSTYLE " + GetStyles(exStyles, false));
             _stringBuilder.AppendLine($"CAPTION \"{control.Text}\"");
-            _stringBuilder.AppendLine($"FONT 8, \"MS Shell Dlg\", 0, 0, 0x1"); //ToDo
+            _stringBuilder.AppendLine("FONT 8, \"MS Shell Dlg\", 0, 0, 0x1"); //ToDo
         }
 
         private void ProcessButton(Button control, Form form)
         {
-            var styles = ProcessCommonStyles(control);
+            var styles = GetCommonStyles(control);
+            GetContentAllignmentStyle(control.TextAlign, new[] { "BS_CENTER", "BS_VCENTER" }, styles);
             AddControl(control, control.Equals(form.AcceptButton) ? "DEFPUSHBUTTON" : "PUSHBUTTON", GetId(control, "BUTTON"), styles);
         }
 
         private void ProcessLabel(Label control)
         {
-            var styles = ProcessCommonStyles(control);
+            var styles = GetCommonStyles(control);
+            styles.Remove("NOT WS_TABSTOP");
+            if (control.AutoEllipsis)
+                styles.Add("SS_WORDELLIPSIS");
+            GetContentAllignmentStyle(control.TextAlign, new[] { "BS_TOP", "BS_LEFT" }, styles);
             AddControl(control, "LTEXT", "IDC_STATIC", styles);
+        }
+
+        private void ProcessGroupBox(GroupBox control)
+        {
+            var styles = GetCommonStyles(control);
+            styles.Remove("NOT WS_TABSTOP");
+            AddControl(control, "GROUPBOX", "IDC_STATIC", styles);
         }
 
         private void ProcessTextBox(TextBox control)
         {
-            var styles = ProcessCommonStyles(control);
+            var styles = GetCommonStyles(control);
+            if (control.Multiline)
+                styles.Add("ES_MULTILINE");
+            else if (control.PasswordChar != '\0')
+                styles.Add("ES_PASSWORD");
+            if (control.ReadOnly)
+                styles.Add("ES_READONLY");
+            switch (control.TextAlign)
+            {
+                //case HorizontalAlignment.Left:
+                //    styles.Add("ES_LEFT");
+                //    break;
+                case HorizontalAlignment.Right:
+                    styles.Add("ES_RIGHT");
+                    break;
+                case HorizontalAlignment.Center:
+                    styles.Add("ES_CENTER");
+                    break;
+            }
             AddControlType("EDITTEXT");
             _stringBuilder.Append(GetId(control, "EDIT") + ",");
             _stringBuilder.Append(CalculateDimension(control));
@@ -260,16 +382,38 @@ namespace Hiale.Win32Forms
 
         private void ProcessCheckBox(CheckBox control)
         {
-            var styles = ProcessCommonStyles(control);
+            var styles = GetCommonStyles(control);
+            GetContentAllignmentStyle(control.TextAlign, new[] { "BS_VCENTER", "BS_LEFT" }, styles);
             styles.Add(control.ThreeState ? "BS_AUTO3STATE" : "BS_AUTOCHECKBOX");
             AddControl(control, "CONTROL", GetId(control, "CHECK"), styles);
         }
 
         private void ProcessRadioButton(RadioButton control)
         {
-            var styles = ProcessCommonStyles(control);
+            var styles = GetCommonStyles(control);
+            GetContentAllignmentStyle(control.TextAlign, new[] { "BS_VCENTER", "BS_LEFT" }, styles);
             styles.Add("BS_AUTORADIOBUTTON");
             AddControl(control, "CONTROL", GetId(control, "RADIO"), styles);
+        }
+
+        private void ProcessComboBox(ComboBox control)
+        {
+            var styles = GetCommonStyles(control);
+            switch (control.DropDownStyle)
+            {
+                case ComboBoxStyle.Simple:
+                    styles.Add("CBS_SIMPLE");
+                    break;
+                case ComboBoxStyle.DropDown:
+                    styles.Add("CBS_DROPDOWN");
+                    break;
+                case ComboBoxStyle.DropDownList:
+                    styles.Add("CBS_DROPDOWNLIST");
+                    break;
+            }
+            if (control.Sorted)
+                styles.Add("CBS_SORT");
+            AddControl(control, "CONTROL", GetId(control, "COMBO"), styles);
         }
 
     }

@@ -33,6 +33,7 @@
             this.btnBrowseAssembly = new System.Windows.Forms.Button();
             this.txtAssembly = new System.Windows.Forms.TextBox();
             this.grpOutput = new System.Windows.Forms.GroupBox();
+            this.chkUseControlName = new System.Windows.Forms.CheckBox();
             this.btnBrowseResource = new System.Windows.Forms.Button();
             this.txtResource = new System.Windows.Forms.TextBox();
             this.btnConvert = new System.Windows.Forms.Button();
@@ -92,14 +93,27 @@
             // 
             this.grpOutput.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpOutput.Controls.Add(this.chkUseControlName);
             this.grpOutput.Controls.Add(this.btnBrowseResource);
             this.grpOutput.Controls.Add(this.txtResource);
             this.grpOutput.Location = new System.Drawing.Point(12, 188);
             this.grpOutput.Name = "grpOutput";
-            this.grpOutput.Size = new System.Drawing.Size(260, 52);
+            this.grpOutput.Size = new System.Drawing.Size(260, 72);
             this.grpOutput.TabIndex = 1;
             this.grpOutput.TabStop = false;
             this.grpOutput.Text = "Output - Win32 Dialog";
+            // 
+            // chkUseControlName
+            // 
+            this.chkUseControlName.AutoSize = true;
+            this.chkUseControlName.Checked = true;
+            this.chkUseControlName.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkUseControlName.Location = new System.Drawing.Point(6, 45);
+            this.chkUseControlName.Name = "chkUseControlName";
+            this.chkUseControlName.Size = new System.Drawing.Size(112, 17);
+            this.chkUseControlName.TabIndex = 4;
+            this.chkUseControlName.Text = "Use Control Name";
+            this.chkUseControlName.UseVisualStyleBackColor = true;
             // 
             // btnBrowseResource
             // 
@@ -126,7 +140,7 @@
             // 
             this.btnConvert.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnConvert.Enabled = false;
-            this.btnConvert.Location = new System.Drawing.Point(197, 246);
+            this.btnConvert.Location = new System.Drawing.Point(197, 266);
             this.btnConvert.Name = "btnConvert";
             this.btnConvert.Size = new System.Drawing.Size(75, 23);
             this.btnConvert.TabIndex = 2;
@@ -138,7 +152,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(284, 281);
+            this.ClientSize = new System.Drawing.Size(284, 301);
             this.Controls.Add(this.btnConvert);
             this.Controls.Add(this.grpOutput);
             this.Controls.Add(this.grpInput);
@@ -162,6 +176,7 @@
         private System.Windows.Forms.Button btnConvert;
         private System.Windows.Forms.Button btnBrowseResource;
         private System.Windows.Forms.TextBox txtResource;
+        private System.Windows.Forms.CheckBox chkUseControlName;
     }
 }
 

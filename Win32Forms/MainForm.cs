@@ -109,9 +109,10 @@ namespace Hiale.Win32Forms
             try
             {
                 var resourceFile = new ResourceFile(txtResource.Text, !File.Exists(txtResource.Text));
-
                 if (!resourceFile.IsValid())
                     throw new Exception("Resource File is not valid.");
+
+                var useControlName = chkUseControlName.Checked;
 
                 //execute these GDI methods on the GUI thread
                 Graphics graphics = null;
@@ -135,6 +136,7 @@ namespace Hiale.Win32Forms
                 {
                     btnConvert.BeginInvoke(new Action(() => { btnConvert.Enabled = false; }));
                     var converter = new FormConverter(formType, dialogUnitCalculation.ToDialogUnits, resourceFile.IsIdAvailable);
+                    converter.UseControlName = useControlName;
                     var result = converter.Convert();
                     resourceFile.Patch(result);
                     ShowMessage();

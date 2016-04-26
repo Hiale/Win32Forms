@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+// ReSharper disable AssignNullToNotNullAttribute
 
 namespace Hiale.Win32Forms
 {
@@ -50,11 +51,11 @@ namespace Hiale.Win32Forms
             var resourceHeaderFileName = Path.Combine(Path.GetDirectoryName(FileName), string.Format(defaultResourceHeaderFileName, string.Empty));
             if (File.Exists(resourceHeaderFileName))
             {
-                int index = 1;
+                int index = 0;
                 while (true)
                 {
-                    resourceHeaderFileName = Path.Combine(Path.GetDirectoryName(FileName), string.Format(defaultResourceHeaderFileName, index));
                     index++;
+                    resourceHeaderFileName = Path.Combine(Path.GetDirectoryName(FileName), string.Format(defaultResourceHeaderFileName, index));
                     if (File.Exists(resourceHeaderFileName))
                         continue;
                     _fileContent = _fileContent.Replace(string.Format(defaultResourceHeaderFileName, string.Empty), string.Format(defaultResourceHeaderFileName, index));

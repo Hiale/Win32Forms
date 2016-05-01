@@ -38,31 +38,39 @@ Note: Not all properties are converted!
 ###### Sample 1
 
 Windows Forms
+
 ![WinForms Form 1](Screenshots/WinForms1.png)
 
 Win32 Dialog
+
 ![Dialog 1](Screenshots/Dialog1.png)
 
 ###### Sample 2
 
 Windows Forms
+
 ![WinForms Form 2](Screenshots/WinForms2.png)
 
 Win32 Dialog - In this sample the ProgressBar which is below button1 is not converted because the control is not supported.
+
 ![Dialog 2](Screenshots/Dialog2.png)
 
 ###### Sample 3
 
 Windows Forms
+
 ![WinForms Form 3](Screenshots/WinForms3.png)
 
 Win32 Dialog
+
 ![Dialog 3](Screenshots/Dialog3.png)
 
 ###### Sample 4
 
 Windows Forms
+
 ![WinForms MainForm](Screenshots/WinFormsMainForm.png)
 
 Win32 Dialog
+
 ![Dialog MainForm](Screenshots/DialogMainForm.png)

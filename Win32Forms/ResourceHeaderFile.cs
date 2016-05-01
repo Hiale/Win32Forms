@@ -17,13 +17,16 @@ namespace Hiale.Win32Forms
 
         public string FileName { get; }
 
+        public ResourceFile ResourceFile { get; }
+
         public List<ResourceHeaderEntry> Entries { get; }
 
-        public ResourceHeaderFile(string fileName, bool embedded = false)
+        public ResourceHeaderFile(string fileName, ResourceFile resourceFile, bool embedded = false)
         {
             _lines = new List<string>();
             Entries = new List<ResourceHeaderEntry>();
             FileName = fileName;
+            ResourceFile = resourceFile;
             if (embedded)
                 ReadEmbedded();
             else
@@ -61,11 +64,19 @@ namespace Hiale.Win32Forms
             var assembly = Assembly.GetExecutingAssembly();
             var resourceName = GetType().Namespace + ".Template.resource.h";
             using (var stream = assembly.GetManifestResourceStream(resourceName))
+            // ReSharper disable once AssignNullToNotNullAttribute
             using (var reader = new StreamReader(stream, Encoding.UTF8))
             {
+                var regEx = new Regex(@"Used by (.*)");
+                bool checkRegEx = true;
                 string line;
                 while ((line = reader.ReadLine()) != null)
                 {
+                    if (checkRegEx && regEx.IsMatch(line))
+                    {
+                        line = regEx.Replace(line, "Used by " + Path.GetFileName(ResourceFile.FileName));
+                        checkRegEx = false;
+                    }
                     _lines.Add(line);
                 }
             }
@@ -103,9 +114,9 @@ namespace Hiale.Win32Forms
         private void CreateLineMap()
         {
             Entries.Clear();
+            var regEx = new Regex(@"#define\s+(\S*)\s+(\d+)");
             for (var i = 0; i < _lines.Count; i++)
             {
-                var regEx = new Regex(@"#define\s+(\S*)\s+(\d+)");
                 var match = regEx.Match(_lines[i]);
                 if (!match.Success)
                     continue;

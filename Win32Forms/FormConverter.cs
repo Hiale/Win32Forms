@@ -99,6 +99,10 @@ namespace Hiale.Win32Forms
             {
                 ProcessComboBox(control as ComboBox);
             }
+            else if (IsSameOrSubclass(control.GetType(), typeof (ListBox)))
+            {
+                ProcessListBox(control as ListBox);
+            }
             else
             {
                 System.Diagnostics.Debug.WriteLine($"Control Type {control.GetType()} not implemented.");
@@ -171,7 +175,7 @@ namespace Hiale.Win32Forms
             return dialogId;
         }
 
-        private string CalculateDimension(Control control)
+        private string CalculateDimension(Control control, bool useSpaces = false)
         {
             int x, y, width, height;
             if (control.Parent == null)
@@ -185,7 +189,7 @@ namespace Hiale.Win32Forms
                 _toDialogUnits(locationOnForm.X, locationOnForm.Y, out x, out y);
             }
             _toDialogUnits(control.ClientSize.Width, control.ClientSize.Height, out width, out height);
-            return $"{x},{y},{width},{height}";
+            return useSpaces ? $"{x}, {y}, {width}, {height}" : $"{x},{y},{width},{height}";
         }
 
         private static HashSet<string> GetCommonStyles(Control control)
@@ -320,7 +324,7 @@ namespace Hiale.Win32Forms
                 control.StartPosition == FormStartPosition.CenterParent)
                 styles.Add("DS_CENTER");
 
-            _stringBuilder.AppendLine($"{dialogName} DIALOGEX {CalculateDimension(control)}");
+            _stringBuilder.AppendLine($"{dialogName} DIALOGEX {CalculateDimension(control, true)}");
             _stringBuilder.AppendLine("STYLE " + GetStyles(styles, false));
             if (exStyles.Any())
                 _stringBuilder.AppendLine("EXSTYLE " + GetStyles(exStyles, false));
@@ -363,9 +367,8 @@ namespace Hiale.Win32Forms
                 styles.Add("ES_READONLY");
             switch (control.TextAlign)
             {
-                //case HorizontalAlignment.Left:
-                //    styles.Add("ES_LEFT");
-                //    break;
+                case HorizontalAlignment.Left: //default
+                    break;
                 case HorizontalAlignment.Right:
                     styles.Add("ES_RIGHT");
                     break;
@@ -413,7 +416,41 @@ namespace Hiale.Win32Forms
             }
             if (control.Sorted)
                 styles.Add("CBS_SORT");
-            AddControl(control, "CONTROL", GetId(control, "COMBO"), styles);
+            AddControl(control, "COMBOBOX", GetId(control, "COMBO"), styles);
+
+            AddControlType("COMBOBOX");
+            _stringBuilder.Append(GetId(control, "COMBO") + ",");
+            _stringBuilder.Append(CalculateDimension(control));
+            _stringBuilder.Append(GetStyles(styles));
+            _stringBuilder.Append(Environment.NewLine);
+
+        }
+
+        private void ProcessListBox(ListBox control)
+        {
+            var styles = GetCommonStyles(control);
+            switch (control.SelectionMode)
+            {
+                case SelectionMode.None:
+                    styles.Add("LBS_NOSEL");
+                    break;
+                case SelectionMode.One: //default
+                    break;
+                case SelectionMode.MultiSimple:
+                    styles.Add("LBS_MULTIPLESEL");
+                    break;
+                case SelectionMode.MultiExtended:
+                    styles.Add("LBS_EXTENDEDSEL");
+                    break;
+            }
+            if (control.Sorted)
+                styles.Add("LBS_SORT");
+
+            AddControlType("LISTBOX");
+            _stringBuilder.Append(GetId(control, "LIST") + ",");
+            _stringBuilder.Append(CalculateDimension(control));
+            _stringBuilder.Append(GetStyles(styles));
+            _stringBuilder.Append(Environment.NewLine);
         }
 
     }

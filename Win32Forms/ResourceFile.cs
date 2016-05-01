@@ -62,7 +62,7 @@ namespace Hiale.Win32Forms
                     break;
                 }
             }
-            _resourceHeaderFile = new ResourceHeaderFile(resourceHeaderFileName, true);
+            _resourceHeaderFile = new ResourceHeaderFile(resourceHeaderFileName, this, true);
         }
 
         private void Write()
@@ -142,7 +142,7 @@ namespace Hiale.Win32Forms
                 var headerFile = Path.Combine(basePath, match.Groups[1].Value);
                 if (!File.Exists(headerFile))
                     continue;
-                var resourceHeaderFile = new ResourceHeaderFile(headerFile);
+                var resourceHeaderFile = new ResourceHeaderFile(headerFile, this);
                 if (!resourceHeaderFile.IsValid())
                     continue;
                 _resourceHeaderFile = resourceHeaderFile;

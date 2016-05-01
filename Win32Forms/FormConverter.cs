@@ -416,7 +416,6 @@ namespace Hiale.Win32Forms
             }
             if (control.Sorted)
                 styles.Add("CBS_SORT");
-            AddControl(control, "COMBOBOX", GetId(control, "COMBO"), styles);
 
             AddControlType("COMBOBOX");
             _stringBuilder.Append(GetId(control, "COMBO") + ",");

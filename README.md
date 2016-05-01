@@ -35,6 +35,8 @@ Note: Not all properties are converted!
 
 ### Samples
 
+Note: The Windows Forms screenshots are taken with Windows XP Visual Style turned on, where in the Win32 Dialog screenshots it is off.
+
 ###### Sample 1
 
 Windows Forms
@@ -61,7 +63,7 @@ Windows Forms
 
 ![WinForms Form 3](Screenshots/WinForms3.png)
 
-Win32 Dialog
+Win32 Dialog - In this sample the border should be invisible, but there is still a bug...
 
 ![Dialog 3](Screenshots/Dialog3.png)
 

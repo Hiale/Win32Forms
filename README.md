@@ -35,8 +35,6 @@ Note: Not all properties are converted!
 
 ### Samples
 
-Note: The Windows Forms screenshots are taken with Windows XP Visual Style turned on, where in the Win32 Dialog screenshots it is off.
-
 ###### Sample 1
 
 Windows Forms

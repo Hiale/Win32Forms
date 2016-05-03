@@ -13,14 +13,14 @@ namespace Hiale.Win32Forms
         private readonly Dictionary<string, int> _commandIdMap;
         private readonly Type _formType;
         private readonly DialogUnitCalculation.CalculateDialogUnits _toDialogUnits;
-        private readonly Func<string, bool> _isIdAvailable; //returns true if the given name is not yet present and can be used.
+        private readonly Func<string, bool, bool> _isIdAvailable; //returns true if the given name is not yet present and can be used.
 
         private Form _formInstance;
         private ConvertResult _result;
 
         public bool UseControlName { get; set; }
 
-        public FormConverter(Type formType, DialogUnitCalculation.CalculateDialogUnits toDialogUnits, Func<string, bool> isIdAvailable)
+        public FormConverter(Type formType, DialogUnitCalculation.CalculateDialogUnits toDialogUnits, Func<string, bool, bool> isIdAvailable)
         {
             _stringBuilder = new StringBuilder();
             _commandIdMap = new Dictionary<string, int>();
@@ -38,8 +38,7 @@ namespace Hiale.Win32Forms
             _formInstance = (Form)Activator.CreateInstance(_formType);
             ProcessControl(_formInstance);
             _stringBuilder.AppendLine("END");
-            _result.DialogContent = _stringBuilder.ToString();
-            _result.NewResourceValue = GetDialogId();
+            _result.DialogContent = _stringBuilder.ToString().Trim();
             return _result;
         }
 
@@ -55,13 +54,28 @@ namespace Hiale.Win32Forms
             _stringBuilder.Append(new string(' ', 20 - (4 + controlType.Length)));
         }
 
-        private void AddControl(Control control, string controlType, string controlId, HashSet<string> styles)
+        private void AddControl(Control control, string controlType, HashSet<string> styles, string subType = null)
         {
             var style = GetStyles(styles);
             AddControlType(controlType);
-            _stringBuilder.AppendLine(controlType.ToUpper() == "CONTROL"
-                ? $"\"{control.Text}\",{controlId},\"Button\"{style},{CalculateDimension(control)}"
-                : $"\"{control.Text}\",{controlId},{CalculateDimension(control)}{style}");
+            var type = string.IsNullOrEmpty(subType) ? DialogControl.GetControlType(controlType) : DialogControl.GetControlType(controlType, subType);
+            var controlId = type.IsStatic ? "IDC_STATIC" : GetId(control, type.DefaultId);
+            switch (type.PropertiesOrder)
+            {
+                case ControlPropertiesOrder.IdDimensionsStyles:
+                    _stringBuilder.AppendLine($"{controlId},{CalculateDimension(control)}{style}");
+                    break;
+                case ControlPropertiesOrder.TextIdDimensionStyles:
+                    _stringBuilder.AppendLine($"\"{control.Text}\",{controlId},{CalculateDimension(control)}{style}");
+                    break;
+                case ControlPropertiesOrder.TextIdSubtypeStylesDimension:
+                    _stringBuilder.AppendLine($"\"{control.Text}\",{controlId},\"Button\"{style},{CalculateDimension(control)}");
+                    break;
+                case ControlPropertiesOrder.ReferenceIdDimensionStyles: //ToDo
+                    _stringBuilder.AppendLine($"{"ToDo"},{controlId},{CalculateDimension(control)}{style}");
+                    break;
+            }
+
         }
 
         private void ProcessControl(Control control)
@@ -121,7 +135,7 @@ namespace Hiale.Win32Forms
                 if (!string.IsNullOrEmpty(control.Name))
                 {
                     commandId = control.Name.ToUpper();
-                    if (_isIdAvailable(commandId))
+                    if (_isIdAvailable(commandId, false))
                     {
                         _result.NewControlValues.Add(commandId);
                         return commandId;
@@ -141,7 +155,7 @@ namespace Hiale.Win32Forms
                     _commandIdMap.Add(defaultName, value);
                 }
                 commandId = $"IDC_{defaultName}{value}";
-                if (_isIdAvailable(commandId))
+                if (_isIdAvailable(commandId, false))
                 { 
                     _result.NewControlValues.Add(commandId);
                     return commandId;
@@ -154,21 +168,23 @@ namespace Hiale.Win32Forms
             string dialogId;
             if (UseControlName && !string.IsNullOrEmpty(_formInstance.Name))
             {
-                dialogId = "IDD_" + _formInstance.Name.ToUpper();
-                if (_isIdAvailable(dialogId))
+                dialogId = _formInstance.Name.ToUpper();
+                if (!dialogId.StartsWith("IDD_"))
+                    dialogId = "IDD_" + dialogId;
+                if (_isIdAvailable(dialogId, true))
                     return dialogId;
             }
             else
             {
                 dialogId = "IDD_DIALOG";
-                if (_isIdAvailable(dialogId))
+                if (_isIdAvailable(dialogId, true))
                     return dialogId;
                 var index = 1;
                 while (true)
                 {
                     dialogId = "IDD_DIALOG" + index;
                     index++;
-                    if (_isIdAvailable(dialogId))
+                    if (_isIdAvailable(dialogId, true))
                         break;
                 }
             }
@@ -261,8 +277,8 @@ namespace Hiale.Win32Forms
 
         private void ProcessForm(Form control)
         {
-            //var dialogName = "IDD_" + control.GetType().Name.ToUpper();
             var dialogName = GetDialogId();
+            _result.NewResourceValue = dialogName;
 
             var styles = new HashSet<string>();
             var exStyles = new HashSet<string>();
@@ -336,7 +352,7 @@ namespace Hiale.Win32Forms
         {
             var styles = GetCommonStyles(control);
             GetContentAllignmentStyle(control.TextAlign, new[] { "BS_CENTER", "BS_VCENTER" }, styles);
-            AddControl(control, control.Equals(form.AcceptButton) ? "DEFPUSHBUTTON" : "PUSHBUTTON", GetId(control, "BUTTON"), styles);
+            AddControl(control, control.Equals(form.AcceptButton) ? "DEFPUSHBUTTON" : "PUSHBUTTON", styles);
         }
 
         private void ProcessLabel(Label control)
@@ -346,14 +362,14 @@ namespace Hiale.Win32Forms
             if (control.AutoEllipsis)
                 styles.Add("SS_WORDELLIPSIS");
             GetContentAllignmentStyle(control.TextAlign, new[] { "BS_TOP", "BS_LEFT" }, styles);
-            AddControl(control, "LTEXT", "IDC_STATIC", styles);
+            AddControl(control, "LTEXT", styles);
         }
 
         private void ProcessGroupBox(GroupBox control)
         {
             var styles = GetCommonStyles(control);
             styles.Remove("NOT WS_TABSTOP");
-            AddControl(control, "GROUPBOX", "IDC_STATIC", styles);
+            AddControl(control, "GROUPBOX", styles);
         }
 
         private void ProcessTextBox(TextBox control)
@@ -376,11 +392,7 @@ namespace Hiale.Win32Forms
                     styles.Add("ES_CENTER");
                     break;
             }
-            AddControlType("EDITTEXT");
-            _stringBuilder.Append(GetId(control, "EDIT") + ",");
-            _stringBuilder.Append(CalculateDimension(control));
-            _stringBuilder.Append(GetStyles(styles));
-            _stringBuilder.Append(Environment.NewLine);
+            AddControl(control, "EDITTEXT", styles);
         }
 
         private void ProcessCheckBox(CheckBox control)
@@ -388,7 +400,7 @@ namespace Hiale.Win32Forms
             var styles = GetCommonStyles(control);
             GetContentAllignmentStyle(control.TextAlign, new[] { "BS_VCENTER", "BS_LEFT" }, styles);
             styles.Add(control.ThreeState ? "BS_AUTO3STATE" : "BS_AUTOCHECKBOX");
-            AddControl(control, "CONTROL", GetId(control, "CHECK"), styles);
+            AddControl(control, "CONTROL", styles, "CHECK");
         }
 
         private void ProcessRadioButton(RadioButton control)
@@ -396,7 +408,7 @@ namespace Hiale.Win32Forms
             var styles = GetCommonStyles(control);
             GetContentAllignmentStyle(control.TextAlign, new[] { "BS_VCENTER", "BS_LEFT" }, styles);
             styles.Add("BS_AUTORADIOBUTTON");
-            AddControl(control, "CONTROL", GetId(control, "RADIO"), styles);
+            AddControl(control, "CONTROL", styles, "RADIO");
         }
 
         private void ProcessComboBox(ComboBox control)
@@ -416,13 +428,7 @@ namespace Hiale.Win32Forms
             }
             if (control.Sorted)
                 styles.Add("CBS_SORT");
-
-            AddControlType("COMBOBOX");
-            _stringBuilder.Append(GetId(control, "COMBO") + ",");
-            _stringBuilder.Append(CalculateDimension(control));
-            _stringBuilder.Append(GetStyles(styles));
-            _stringBuilder.Append(Environment.NewLine);
-
+            AddControl(control, "COMBOBOX", styles);
         }
 
         private void ProcessListBox(ListBox control)
@@ -444,12 +450,7 @@ namespace Hiale.Win32Forms
             }
             if (control.Sorted)
                 styles.Add("LBS_SORT");
-
-            AddControlType("LISTBOX");
-            _stringBuilder.Append(GetId(control, "LIST") + ",");
-            _stringBuilder.Append(CalculateDimension(control));
-            _stringBuilder.Append(GetStyles(styles));
-            _stringBuilder.Append(Environment.NewLine);
+            AddControl(control, "LISTBOX", styles);
         }
 
     }

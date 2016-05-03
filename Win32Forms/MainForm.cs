@@ -108,7 +108,7 @@ namespace Hiale.Win32Forms
         {
             try
             {
-                var resourceFile = new ResourceFile(txtResource.Text, !File.Exists(txtResource.Text));
+                var resourceFile = new ResourceFile(txtResource.Text, chkReplace.Checked, !File.Exists(txtResource.Text));
                 if (!resourceFile.IsValid())
                     throw new Exception("Resource File is not valid.");
 

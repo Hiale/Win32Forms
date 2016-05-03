@@ -35,7 +35,7 @@ namespace Hiale.Win32Forms
 
         public bool IsValid()
         {
-            return GetNextValue(NextResourceValue) > -1 && GetNextValue(NextControlValue) > -1;
+            return GetValue(NextResourceValue) > -1 && GetValue(NextControlValue) > -1;
         }
 
         public void AddResource(string name)
@@ -46,6 +46,23 @@ namespace Hiale.Win32Forms
         public void AddControl(string name)
         {
             AddEntry(NextControlValue, name);
+        }
+
+        public void RemoveEntry(string name)
+        {
+            var regEx = new Regex($@"#define\s+{name}\s+.+");
+            var line = -1;
+            for (var i = 0; i < _lines.Count; i++)
+            {
+                if (!regEx.IsMatch(_lines[i]))
+                    continue;
+                line = i;
+                break;
+            }
+            if (line < 0)
+                return;
+            _lines.RemoveAt(line);
+            CreateLineMap();
         }
 
         public void Write()
@@ -93,22 +110,24 @@ namespace Hiale.Win32Forms
 
         private void AddEntry(string type, string name)
         {
-            var value = GetNextValue(type);
-            if (value < 0)
+            if (GetValue(name) != null)
+                return;
+            var value = GetValue(type);
+            if (value == null)
                 throw new Exception("Invalid Resource Header File.");
-            var line = FindLine(value);
-            _lines.Insert(line, GenerateEntry(name, value));
+            var line = FindLine(value.Value);
+            _lines.Insert(line, GenerateEntry(name, value.Value));
             CreateLineMap();
             IncrementValue(type);
         }
 
-        private int GetNextValue(string name)
+        private int? GetValue(string name)
         {
             foreach (var entry in Entries.Where(entry => entry.Name == name))
             {
                 return entry.Value;
             }
-            return -1;
+            return null;
         }
 
         private void CreateLineMap()

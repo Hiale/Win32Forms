@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -12,18 +13,24 @@ namespace Hiale.Win32Forms
     {
         public string FileName { get; }
 
+        public bool Replace { get; }
+
         private ResourceHeaderFile _resourceHeaderFile;
         private string _fileContent;
         private readonly bool _embedded;
+        private bool _oldDialogFound;
+        private readonly HashSet<string> _replaceOldControlIds; 
 
-        public ResourceFile(string fileName, bool embedded = false)
+        public ResourceFile(string fileName, bool replace, bool embedded = false)
         {
             FileName = fileName;
+            Replace = replace;
             _embedded = embedded;
             if (embedded)
                 ReadEmbedded();
             else
                 Read();
+            _replaceOldControlIds = new HashSet<string>();
         }
 
         public bool IsValid()
@@ -78,6 +85,11 @@ namespace Hiale.Win32Forms
 
         public void Patch(ConvertResult result)
         {
+            if (Replace && _oldDialogFound)
+            {
+                PatchReplace(result);
+                return;
+            }
             //patch header file
             _resourceHeaderFile.AddResource(result.NewResourceValue);
             foreach (var newControlValue in result.NewControlValues)
@@ -103,8 +115,51 @@ namespace Hiale.Win32Forms
             Write();
         }
 
-        public bool IsIdAvailable(string id)
+        private void PatchReplace(ConvertResult result)
         {
+            //patch header file
+            var resourceHaderChanged = false;
+            foreach (var newControlValue in result.NewControlValues)
+            {
+                if (_replaceOldControlIds.Contains(newControlValue))
+                {
+                    _replaceOldControlIds.Remove(newControlValue);
+                    continue;
+                }
+                _resourceHeaderFile.AddControl(newControlValue);
+                resourceHaderChanged = true;
+            }
+            foreach (var removedOldControlId in _replaceOldControlIds)
+            {
+                _resourceHeaderFile.RemoveEntry(removedOldControlId);
+                resourceHaderChanged = true;
+            }
+
+            if (resourceHaderChanged)
+            {
+                CreateBackup(_resourceHeaderFile.FileName);
+                _resourceHeaderFile.Write();
+            }
+
+            //patch resource file
+            ReplaceExistingDialog(result);
+
+            CreateBackup(FileName);
+            Write();
+        }
+
+        public bool IsIdAvailable(string id, bool isForm)
+        {
+            if (Replace)
+            {
+                if (isForm)
+                {
+                    FindDialogControls(id);
+                    return true;
+                }
+                if (_replaceOldControlIds.Contains(id))
+                    return true;
+            }
             return _resourceHeaderFile.Entries.All(resourceHeaderEntry => resourceHeaderEntry.Name != id);
         }
 
@@ -130,6 +185,41 @@ namespace Hiale.Win32Forms
                 return -1;
             var lastMatch = matches[matches.Count - 1];
             return lastMatch.Index + lastMatch.Length;
+        }
+
+        private Regex FindExistingDialog(string id)
+        {
+            var regEx = new Regex($"{id} DIALOGEX.*?^BEGIN(.*?)^END", RegexOptions.Multiline | RegexOptions.Singleline);
+            var matches = regEx.Matches(_fileContent);
+            return matches.Count == 1 ? regEx : null;
+        }
+
+        private void ReplaceExistingDialog(ConvertResult result)
+        {
+            var regEx = FindExistingDialog(result.NewResourceValue);
+            if (regEx != null)
+            {
+                _fileContent = regEx.Replace(_fileContent, result.DialogContent);
+            }
+        }
+
+        private void FindDialogControls(string id)
+        {
+            var dialogRegEx = FindExistingDialog(id);
+            if (dialogRegEx == null)
+                return;
+            _oldDialogFound = true;
+            var controls = dialogRegEx.Match(_fileContent).Groups[1].Value;
+            if (string.IsNullOrEmpty(controls))
+                return;
+            var lines = controls.Split(new[] {"\r\n", "\n"}, StringSplitOptions.None);
+            foreach (var line in lines)
+            {
+                var controlId = DialogControl.ParseId(line);
+                if (string.IsNullOrEmpty(controlId))
+                    continue;
+                _replaceOldControlIds.Add(controlId);
+            }
         }
 
         private void FindHeaderFile()

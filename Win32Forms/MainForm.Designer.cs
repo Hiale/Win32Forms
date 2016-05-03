@@ -33,6 +33,7 @@
             this.btnBrowseAssembly = new System.Windows.Forms.Button();
             this.txtAssembly = new System.Windows.Forms.TextBox();
             this.grpOutput = new System.Windows.Forms.GroupBox();
+            this.chkReplace = new System.Windows.Forms.CheckBox();
             this.chkUseControlName = new System.Windows.Forms.CheckBox();
             this.btnBrowseResource = new System.Windows.Forms.Button();
             this.txtResource = new System.Windows.Forms.TextBox();
@@ -93,15 +94,28 @@
             // 
             this.grpOutput.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpOutput.Controls.Add(this.chkReplace);
             this.grpOutput.Controls.Add(this.chkUseControlName);
             this.grpOutput.Controls.Add(this.btnBrowseResource);
             this.grpOutput.Controls.Add(this.txtResource);
             this.grpOutput.Location = new System.Drawing.Point(12, 188);
             this.grpOutput.Name = "grpOutput";
-            this.grpOutput.Size = new System.Drawing.Size(260, 72);
+            this.grpOutput.Size = new System.Drawing.Size(260, 102);
             this.grpOutput.TabIndex = 1;
             this.grpOutput.TabStop = false;
             this.grpOutput.Text = "Output - Win32 Dialog";
+            // 
+            // chkReplace
+            // 
+            this.chkReplace.AutoSize = true;
+            this.chkReplace.Checked = true;
+            this.chkReplace.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkReplace.Location = new System.Drawing.Point(7, 69);
+            this.chkReplace.Name = "chkReplace";
+            this.chkReplace.Size = new System.Drawing.Size(144, 17);
+            this.chkReplace.TabIndex = 5;
+            this.chkReplace.Text = "Replace Dialog if it exists";
+            this.chkReplace.UseVisualStyleBackColor = true;
             // 
             // chkUseControlName
             // 
@@ -110,9 +124,9 @@
             this.chkUseControlName.CheckState = System.Windows.Forms.CheckState.Checked;
             this.chkUseControlName.Location = new System.Drawing.Point(6, 45);
             this.chkUseControlName.Name = "chkUseControlName";
-            this.chkUseControlName.Size = new System.Drawing.Size(112, 17);
+            this.chkUseControlName.Size = new System.Drawing.Size(140, 17);
             this.chkUseControlName.TabIndex = 4;
-            this.chkUseControlName.Text = "Use Control Name";
+            this.chkUseControlName.Text = "Use Control.Name as ID";
             this.chkUseControlName.UseVisualStyleBackColor = true;
             // 
             // btnBrowseResource
@@ -140,7 +154,7 @@
             // 
             this.btnConvert.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnConvert.Enabled = false;
-            this.btnConvert.Location = new System.Drawing.Point(197, 266);
+            this.btnConvert.Location = new System.Drawing.Point(197, 296);
             this.btnConvert.Name = "btnConvert";
             this.btnConvert.Size = new System.Drawing.Size(75, 23);
             this.btnConvert.TabIndex = 2;
@@ -152,7 +166,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(284, 301);
+            this.ClientSize = new System.Drawing.Size(284, 331);
             this.Controls.Add(this.btnConvert);
             this.Controls.Add(this.grpOutput);
             this.Controls.Add(this.grpInput);
@@ -177,6 +191,7 @@
         private System.Windows.Forms.Button btnBrowseResource;
         private System.Windows.Forms.TextBox txtResource;
         private System.Windows.Forms.CheckBox chkUseControlName;
+        private System.Windows.Forms.CheckBox chkReplace;
     }
 }
 

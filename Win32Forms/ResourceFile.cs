@@ -77,16 +77,18 @@ namespace Hiale.Win32Forms
             File.WriteAllText(FileName, _fileContent);
         }
 
-        public static void CreateBackup(string fileName)
+        public static string CreateBackup(string fileName)
         {
             var backupFile = Path.Combine(Path.GetDirectoryName(fileName), $"{Path.GetFileNameWithoutExtension(fileName)} (Win32Forms Backup {DateTime.Now.ToString("yyyyMMddTHHmmss")}){Path.GetExtension(fileName)}");
             File.Copy(fileName, backupFile);
+            return backupFile;
         }
 
         public void Patch(ConvertResult result)
         {
             if (Replace && _oldDialogFound)
             {
+                SimpleLogger.GetLogger().WriteLog("Dialog replaced");
                 PatchReplace(result);
                 return;
             }
@@ -94,10 +96,14 @@ namespace Hiale.Win32Forms
             _resourceHeaderFile.AddResource(result.NewResourceValue);
             foreach (var newControlValue in result.NewControlValues)
             {
-                _resourceHeaderFile.AddControl(newControlValue);
+                var controlId = _resourceHeaderFile.AddControl(newControlValue);
+                SimpleLogger.GetLogger().WriteLog($"Added control '{newControlValue}' with id {controlId}");
             }
             if (!_embedded)
-                CreateBackup(_resourceHeaderFile.FileName);
+            {
+                var backupFileHeader = CreateBackup(_resourceHeaderFile.FileName);
+                SimpleLogger.GetLogger().WriteLog($"Created Backup file '{backupFileHeader}'");
+            }
             _resourceHeaderFile.Write();
 
             //patch resource file
@@ -111,7 +117,10 @@ namespace Hiale.Win32Forms
                 _fileContent = CreateNewDialogSection(result.DialogContent);
             }
             if (!_embedded)
-                CreateBackup(FileName);
+            {
+                var backupFile = CreateBackup(FileName);
+                SimpleLogger.GetLogger().WriteLog($"Created Backup file '{backupFile}'");
+            }
             Write();
         }
 
@@ -126,25 +135,29 @@ namespace Hiale.Win32Forms
                     _replaceOldControlIds.Remove(newControlValue);
                     continue;
                 }
-                _resourceHeaderFile.AddControl(newControlValue);
+                var controlId = _resourceHeaderFile.AddControl(newControlValue);
+                SimpleLogger.GetLogger().WriteLog($"Added control '{newControlValue}' with id {controlId}");
                 resourceHaderChanged = true;
             }
             foreach (var removedOldControlId in _replaceOldControlIds)
             {
                 _resourceHeaderFile.RemoveEntry(removedOldControlId);
+                SimpleLogger.GetLogger().WriteLog($"Removed control '{removedOldControlId}'");
                 resourceHaderChanged = true;
             }
 
             if (resourceHaderChanged)
             {
-                CreateBackup(_resourceHeaderFile.FileName);
+                var backupFileHeader = CreateBackup(_resourceHeaderFile.FileName);
+                SimpleLogger.GetLogger().WriteLog($"Created Backup file '{backupFileHeader}'");
                 _resourceHeaderFile.Write();
             }
 
             //patch resource file
             ReplaceExistingDialog(result);
 
-            CreateBackup(FileName);
+            var backupFile = CreateBackup(FileName);
+            SimpleLogger.GetLogger().WriteLog($"Created Backup file '{backupFile}'");
             Write();
         }
 

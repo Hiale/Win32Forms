@@ -61,6 +61,13 @@
     <Compile Include="ResourceFile.cs" />
     <Compile Include="ResourceHeaderEntry.cs" />
     <Compile Include="ResourceHeaderFile.cs" />
+    <Compile Include="ResultBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ResultBox.Designer.cs">
+      <DependentUpon>ResultBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SimpleLogger.cs" />
     <EmbeddedResource Include="MainForm.resx">
       <Generator>ResXFileCodeGeneratorEx</Generator>
       <DependentUpon>MainForm.cs</DependentUpon>
@@ -85,8 +92,13 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
+    <Folder Include="NewFolder1\" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ResultBox.resx">
+      <DependentUpon>ResultBox.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Template\resource.h" />
     <EmbeddedResource Include="Template\Resource.rc" />
   </ItemGroup>

@@ -38,14 +38,14 @@ namespace Hiale.Win32Forms
             return GetValue(NextResourceValue) > -1 && GetValue(NextControlValue) > -1;
         }
 
-        public void AddResource(string name)
+        public int AddResource(string name)
         {
-            AddEntry(NextResourceValue, name);
+            return AddEntry(NextResourceValue, name);
         }
 
-        public void AddControl(string name)
+        public int AddControl(string name)
         {
-            AddEntry(NextControlValue, name);
+            return AddEntry(NextControlValue, name);
         }
 
         public void RemoveEntry(string name)
@@ -108,10 +108,11 @@ namespace Hiale.Win32Forms
             return entry + " " + value;
         }
 
-        private void AddEntry(string type, string name)
+        private int AddEntry(string type, string name)
         {
-            if (GetValue(name) != null)
-                return;
+            var existingValue = GetValue(name);
+            if (existingValue != null)
+                return existingValue.Value;
             var value = GetValue(type);
             if (value == null)
                 throw new Exception("Invalid Resource Header File.");
@@ -119,6 +120,7 @@ namespace Hiale.Win32Forms
             _lines.Insert(line, GenerateEntry(name, value.Value));
             CreateLineMap();
             IncrementValue(type);
+            return value.Value;
         }
 
         private int? GetValue(string name)

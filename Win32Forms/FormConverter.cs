@@ -119,7 +119,7 @@ namespace Hiale.Win32Forms
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"Control Type {control.GetType()} not implemented.");
+                SimpleLogger.GetLogger().WriteLog($"Control Type {control.GetType()} not implemented.");
             }
             foreach (Control childControl in control.Controls)
             {
@@ -279,6 +279,7 @@ namespace Hiale.Win32Forms
         {
             var dialogName = GetDialogId();
             _result.NewResourceValue = dialogName;
+            SimpleLogger.GetLogger().WriteLog("Dialog ID: " + dialogName);
 
             var styles = new HashSet<string>();
             var exStyles = new HashSet<string>();

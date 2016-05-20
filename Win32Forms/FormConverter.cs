@@ -10,6 +10,7 @@ namespace Hiale.Win32Forms
     public class FormConverter
     {
         private readonly StringBuilder _stringBuilder;
+        private List<Tuple<int, string>> _controls; 
         private readonly Dictionary<string, int> _commandIdMap;
         private readonly Type _formType;
         private readonly DialogUnitCalculation.CalculateDialogUnits _toDialogUnits;
@@ -23,6 +24,7 @@ namespace Hiale.Win32Forms
         public FormConverter(Type formType, DialogUnitCalculation.CalculateDialogUnits toDialogUnits, Func<string, bool, bool> isIdAvailable)
         {
             _stringBuilder = new StringBuilder();
+            _controls = new List<Tuple<int, string>>();
             _commandIdMap = new Dictionary<string, int>();
             _toDialogUnits = toDialogUnits;
             _isIdAvailable = isIdAvailable;
@@ -33,10 +35,16 @@ namespace Hiale.Win32Forms
         public ConvertResult Convert()
         {
             _stringBuilder.Clear();
+            _controls.Clear();
             _commandIdMap.Clear();
             _result = new ConvertResult();
             _formInstance = (Form)Activator.CreateInstance(_formType);
             ProcessControl(_formInstance);
+            _controls = _controls.OrderBy(x => x.Item1).ToList();
+            foreach (var control in _controls)
+            {
+                _stringBuilder.Append(control.Item2);
+            }
             _stringBuilder.AppendLine("END");
             _result.DialogContent = _stringBuilder.ToString().Trim();
             return _result;
@@ -47,35 +55,35 @@ namespace Hiale.Win32Forms
             return targetClass.IsSubclassOf(baseClass) || targetClass == baseClass;
         }
 
-        private void AddControlType(string controlType)
+        private static string AddControlType(string controlType)
         {
-            _stringBuilder.Append(new string(' ', 4));
-            _stringBuilder.Append(controlType);
-            _stringBuilder.Append(new string(' ', 20 - (4 + controlType.Length)));
+            return new string(' ', 4) + controlType + new string(' ', 20 - (4 + controlType.Length));
         }
 
         private void AddControl(Control control, string controlType, HashSet<string> styles, string subType = null)
         {
             var style = GetStyles(styles);
+            var controlBuilder = new StringBuilder();
+            controlBuilder.Append(AddControlType(controlType));
             AddControlType(controlType);
             var type = string.IsNullOrEmpty(subType) ? DialogControl.GetControlType(controlType) : DialogControl.GetControlType(controlType, subType);
             var controlId = type.IsStatic ? "IDC_STATIC" : GetId(control, type.DefaultId);
             switch (type.PropertiesOrder)
             {
                 case ControlPropertiesOrder.IdDimensionsStyles:
-                    _stringBuilder.AppendLine($"{controlId},{CalculateDimension(control)}{style}");
+                    controlBuilder.AppendLine($"{controlId},{CalculateDimension(control)}{style}");
                     break;
                 case ControlPropertiesOrder.TextIdDimensionStyles:
-                    _stringBuilder.AppendLine($"\"{control.Text}\",{controlId},{CalculateDimension(control)}{style}");
+                    controlBuilder.AppendLine($"\"{control.Text}\",{controlId},{CalculateDimension(control)}{style}");
                     break;
                 case ControlPropertiesOrder.TextIdSubtypeStylesDimension:
-                    _stringBuilder.AppendLine($"\"{control.Text}\",{controlId},\"Button\"{style},{CalculateDimension(control)}");
+                    controlBuilder.AppendLine($"\"{control.Text}\",{controlId},\"Button\"{style},{CalculateDimension(control)}");
                     break;
                 case ControlPropertiesOrder.ReferenceIdDimensionStyles: //ToDo
-                    _stringBuilder.AppendLine($"{"ToDo"},{controlId},{CalculateDimension(control)}{style}");
+                    controlBuilder.AppendLine($"{"ToDo"},{controlId},{CalculateDimension(control)}{style}");
                     break;
             }
-
+            _controls.Add(new Tuple<int, string>(control.TabIndex, controlBuilder.ToString()));
         }
 
         private void ProcessControl(Control control)

@@ -401,6 +401,9 @@ namespace Hiale.Win32Forms
                     styles.Add("ES_CENTER");
                     break;
             }
+            //height hack
+            control.ClientSize = new Size(control.Width, control.Height);
+
             AddControl(control, "EDITTEXT", styles);
         }
 

@@ -27,15 +27,17 @@ namespace Hiale.Win32Forms
 
         public string DefaultId { get; }
 
-        public bool IsStatic { get; }
+        public bool IsDefaultStatic { get; }
 
         private static readonly Regex RegEx;
+        private static readonly Regex RegExText;
 
-        private DialogControl(string type, ControlPropertiesOrder propertiesOrder, string defaultId)
+        private DialogControl(string type, ControlPropertiesOrder propertiesOrder, string defaultId, bool defaultStatic = false)
         {
             Type = type;
             PropertiesOrder = propertiesOrder;
             DefaultId = defaultId;
+            IsDefaultStatic = defaultStatic;
         }
 
         private DialogControl(string type, string subType, ControlPropertiesOrder propertiesOrder, string defaultId) : this(type, propertiesOrder, defaultId)
@@ -43,20 +45,18 @@ namespace Hiale.Win32Forms
             SubType = subType;
         }
 
-        private DialogControl(string type, ControlPropertiesOrder propertiesOrder) : this(type, propertiesOrder, null)
-        {
-            IsStatic = true;
-        }
-
         static DialogControl()
         {
             RegEx = new Regex(@"^\s*(\S+)\s+(.*)$");
+            RegExText = new Regex(@"""+");
             ControlTypes = new List<DialogControl>
             {
                 new DialogControl("PUSHBUTTON", ControlPropertiesOrder.TextIdDimensionStyles, "BUTTON"),
                 new DialogControl("DEFPUSHBUTTON", ControlPropertiesOrder.TextIdDimensionStyles, "BUTTON"),
-                new DialogControl("LTEXT", ControlPropertiesOrder.TextIdDimensionStyles),
-                new DialogControl("GROUPBOX", ControlPropertiesOrder.TextIdDimensionStyles),
+                new DialogControl("LTEXT", ControlPropertiesOrder.TextIdDimensionStyles, "TEXT", true),
+                new DialogControl("CTEXT", ControlPropertiesOrder.TextIdDimensionStyles, "TEXT", true),
+                new DialogControl("RTEXT", ControlPropertiesOrder.TextIdDimensionStyles, "TEXT", true),
+                new DialogControl("GROUPBOX", ControlPropertiesOrder.TextIdDimensionStyles, "GROUP", true),
                 new DialogControl("EDITTEXT", ControlPropertiesOrder.IdDimensionsStyles, "EDIT"),
                 new DialogControl("CONTROL", "CHECK", ControlPropertiesOrder.TextIdSubtypeStylesDimension, "CHECK"),
                 new DialogControl("CONTROL", "RADIO", ControlPropertiesOrder.TextIdSubtypeStylesDimension, "RADIO"),
@@ -89,56 +89,70 @@ namespace Hiale.Win32Forms
                     return null;
                 var targetTypes = ControlTypes.Where(controlType => controlType.Type == type).ToList();
                 ControlPropertiesOrder propertiesOrder;
-                bool isStatic;
                 if (targetTypes.Count == 1)
                 {
                     var targetType = targetTypes.First();
                     propertiesOrder = targetType.PropertiesOrder;
-                    isStatic = targetType.IsStatic;
                 }
                 else
                 {
                     var orders = new HashSet<ControlPropertiesOrder>();
-                    var isStaticList = new HashSet<bool>();
                     foreach (var controlType in targetTypes)
                     {
                         orders.Add(controlType.PropertiesOrder);
-                        isStaticList.Add(controlType.IsStatic);
-
                     }
-                    if (orders.Count != 1 || isStaticList.Count != 1)
+                    if (orders.Count != 1)
                         return null;
                     propertiesOrder = orders.First();
-                    isStatic = isStaticList.First();
                 }
-                if (isStatic)
-                    return null;
+                var id = string.Empty;
                 switch (propertiesOrder)
                 {
                     case ControlPropertiesOrder.IdDimensionsStyles:
+
                         var parts = properties.Split(',');
-                        return parts[0];
+                        id = parts[0];
+                        break;
                     case ControlPropertiesOrder.TextIdDimensionStyles:
                     case ControlPropertiesOrder.TextIdSubtypeStylesDimension:
                         var text = FindText(properties);
                         properties = properties.Replace(text, string.Empty);
                         if (properties.StartsWith(","))
                             properties = properties.Substring(1);
-                        return properties.Substring(0, properties.IndexOf(",", StringComparison.Ordinal));
+                        id = properties.Substring(0, properties.IndexOf(",", StringComparison.Ordinal));
+                        break;
                 }
+                if (string.IsNullOrEmpty(id))
+                    return null;
+                return id.ToUpper() == "IDC_STATIC" ? null : id;
             }
             catch (Exception)
             {
                 return null;
             }
-            return null;
         }
 
         private static string FindText(string input)
         {
-            var start = input.IndexOf("\"", StringComparison.Ordinal);
-            var end = input.LastIndexOf("\"", StringComparison.Ordinal);
-            return input.Substring(start, end - start + 1);
+            int? start = null;
+            int? end = null;
+
+            //find single occurrences of the doublw quote char ", in case the actual text contains a double quote it gets escaped by adding another double quote.
+            foreach (Match match in RegExText.Matches(input))
+            {
+                if (match.Length % 2 == 0)
+                    continue;
+                if (start == null)
+                {
+                    start = match.Index;
+                    continue;
+                }
+                end = match.Index + match.Length - 1;
+                break;
+            }
+            if (start.HasValue && end.HasValue)
+                return input.Substring(start.Value, end.Value - start.Value + 1);
+            return string.Empty;
         }
 
         public override string ToString()

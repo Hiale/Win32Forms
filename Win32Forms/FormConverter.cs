@@ -21,6 +21,8 @@ namespace Hiale.Win32Forms
 
         public bool UseControlName { get; set; }
 
+        public bool NoStaticControls { get; set; }
+
         public FormConverter(Type formType, DialogUnitCalculation.CalculateDialogUnits toDialogUnits, Func<string, bool, bool> isIdAvailable)
         {
             _stringBuilder = new StringBuilder();
@@ -67,17 +69,26 @@ namespace Hiale.Win32Forms
             controlBuilder.Append(AddControlType(controlType));
             AddControlType(controlType);
             var type = string.IsNullOrEmpty(subType) ? DialogControl.GetControlType(controlType) : DialogControl.GetControlType(controlType, subType);
-            var controlId = type.IsStatic ? "IDC_STATIC" : GetId(control, type.DefaultId);
+            string controlId;
+            if (!NoStaticControls && type.IsDefaultStatic)
+                controlId = "IDC_STATIC";
+            else
+            {
+                controlId = GetId(control, type.DefaultId);
+                var controlData = new ControlData(controlId) {Anchor = control.Anchor};
+                _result.NewControlValues.Add(controlData);
+            }
+            var controlText = control.Text.Replace("\"", "\"\"");
             switch (type.PropertiesOrder)
             {
                 case ControlPropertiesOrder.IdDimensionsStyles:
                     controlBuilder.AppendLine($"{controlId},{CalculateDimension(control)}{style}");
                     break;
                 case ControlPropertiesOrder.TextIdDimensionStyles:
-                    controlBuilder.AppendLine($"\"{control.Text}\",{controlId},{CalculateDimension(control)}{style}");
+                    controlBuilder.AppendLine($"\"{controlText}\",{controlId},{CalculateDimension(control)}{style}");
                     break;
                 case ControlPropertiesOrder.TextIdSubtypeStylesDimension:
-                    controlBuilder.AppendLine($"\"{control.Text}\",{controlId},\"Button\"{style},{CalculateDimension(control)}");
+                    controlBuilder.AppendLine($"\"{controlText}\",{controlId},\"Button\"{style},{CalculateDimension(control)}");
                     break;
                 case ControlPropertiesOrder.ReferenceIdDimensionStyles: //ToDo
                     controlBuilder.AppendLine($"{"ToDo"},{controlId},{CalculateDimension(control)}{style}");
@@ -144,19 +155,14 @@ namespace Hiale.Win32Forms
                 {
                     commandId = control.Name.ToUpper();
                     if (_isIdAvailable(commandId, false))
-                    {
-                        _result.NewControlValues.Add(commandId);
                         return commandId;
-                    }
                 }
             }
             while (true)
             {
                 int value;
                 if (_commandIdMap.TryGetValue(defaultName, out value))
-                {
                     _commandIdMap[defaultName] = ++value;
-                }
                 else
                 {
                     value = 1;
@@ -164,10 +170,7 @@ namespace Hiale.Win32Forms
                 }
                 commandId = $"IDC_{defaultName}{value}";
                 if (_isIdAvailable(commandId, false))
-                { 
-                    _result.NewControlValues.Add(commandId);
                     return commandId;
-                }
             }
         }
 
@@ -353,7 +356,8 @@ namespace Hiale.Win32Forms
             _stringBuilder.AppendLine("STYLE " + GetStyles(styles, false));
             if (exStyles.Any())
                 _stringBuilder.AppendLine("EXSTYLE " + GetStyles(exStyles, false));
-            _stringBuilder.AppendLine($"CAPTION \"{control.Text}\"");
+            var controlText = control.Text.Replace("\"", "\"\"");
+            _stringBuilder.AppendLine($"CAPTION \"{controlText}\"");
             _stringBuilder.AppendLine("FONT 8, \"MS Shell Dlg\", 0, 0, 0x1"); //ToDo
         }
 
@@ -371,7 +375,25 @@ namespace Hiale.Win32Forms
             if (control.AutoEllipsis)
                 styles.Add("SS_WORDELLIPSIS");
             GetContentAllignmentStyle(control.TextAlign, new[] { "BS_TOP", "BS_LEFT" }, styles);
-            AddControl(control, "LTEXT", styles);
+            switch (control.TextAlign)
+            {
+                case ContentAlignment.TopCenter:
+                case ContentAlignment.MiddleCenter:
+                case ContentAlignment.BottomCenter:
+                    AddControl(control, "CTEXT", styles);
+                    break;
+                case ContentAlignment.TopRight:
+                case ContentAlignment.MiddleRight:
+                case ContentAlignment.BottomRight:
+                    AddControl(control, "RTEXT", styles);
+                    break;
+                default:
+                    //case ContentAlignment.TopLeft:
+                    //case ContentAlignment.MiddleLeft:
+                    //case ContentAlignment.BottomLeft:
+                    AddControl(control, "LTEXT", styles);
+                    break;
+            }
         }
 
         private void ProcessGroupBox(GroupBox control)

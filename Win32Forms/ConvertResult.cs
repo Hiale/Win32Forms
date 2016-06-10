@@ -8,11 +8,11 @@ namespace Hiale.Win32Forms
 
         public string NewResourceValue { get; set; }
 
-        public List<string> NewControlValues { get; private set; }
+        public List<ControlData> NewControlValues { get; private set; }
 
         public ConvertResult()
         {
-            NewControlValues = new List<string>();
+            NewControlValues = new List<ControlData>();
         }
     }
 }

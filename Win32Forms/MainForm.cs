@@ -113,6 +113,7 @@ namespace Hiale.Win32Forms
                     throw new Exception("Resource File is not valid.");
 
                 var useControlName = chkUseControlName.Checked;
+                var generateResizeCode = chkResize.Checked;
 
                 //execute these GDI methods on the GUI thread
                 Graphics graphics = null;
@@ -137,12 +138,18 @@ namespace Hiale.Win32Forms
                     btnConvert.BeginInvoke(new Action(() => { btnConvert.Enabled = false; }));
                     var converter = new FormConverter(formType, dialogUnitCalculation.ToDialogUnits, resourceFile.IsIdAvailable);
                     converter.UseControlName = useControlName;
+                    converter.NoStaticControls = generateResizeCode;
                     SimpleLogger.GetLogger().Messages.Clear();
                     SimpleLogger.GetLogger().WriteLog($"Conversion started - Options: Use Control.Name {(useControlName ? "YES" : "NO")}, Replace {(resourceFile.Replace ? "YES" : "NO")}");
                     var result = converter.Convert();
                     resourceFile.Patch(result);
+                    if (generateResizeCode)
+                    {
+                        var codeGen = new ResizeCodeGenerator(Path.GetDirectoryName(resourceFile.FileName));
+                        codeGen.Generate(result.NewControlValues);
+                    }
                     SimpleLogger.GetLogger().WriteLog("Done!");
-                    ShowMessage();
+                    ShowMessage(generateResizeCode);
                     btnConvert.BeginInvoke(new Action(() => { btnConvert.Enabled = true; }));
                 });
             }
@@ -156,9 +163,9 @@ namespace Hiale.Win32Forms
         }
 
         
-        private void ShowMessage()
+        private void ShowMessage(bool resizeCode)
         {
-            Invoke(new Action(() => {new ResultBox("Done!", "Win32Forms", string.Join(Environment.NewLine, SimpleLogger.GetLogger().Messages), MessageBoxIcon.Information).ShowDialog();}));
+            Invoke(new Action(() => { new ResultBox($"Done!{(resizeCode ? " See below for ControlResizer instructions!" : "")}", "Win32Forms", string.Join(Environment.NewLine, SimpleLogger.GetLogger().Messages), MessageBoxIcon.Information).ShowDialog(); }));
         }
     }
 }

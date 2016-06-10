@@ -96,8 +96,8 @@ namespace Hiale.Win32Forms
             _resourceHeaderFile.AddResource(result.NewResourceValue);
             foreach (var newControlValue in result.NewControlValues)
             {
-                var controlId = _resourceHeaderFile.AddControl(newControlValue);
-                SimpleLogger.GetLogger().WriteLog($"Added control '{newControlValue}' with id {controlId}");
+                var controlId = _resourceHeaderFile.AddControl(newControlValue.ControlId);
+                SimpleLogger.GetLogger().WriteLog($"Added control '{newControlValue.ControlId}' with id {controlId}");
             }
             if (!_embedded)
             {
@@ -130,13 +130,13 @@ namespace Hiale.Win32Forms
             var resourceHaderChanged = false;
             foreach (var newControlValue in result.NewControlValues)
             {
-                if (_replaceOldControlIds.Contains(newControlValue))
+                if (_replaceOldControlIds.Contains(newControlValue.ControlId))
                 {
-                    _replaceOldControlIds.Remove(newControlValue);
+                    _replaceOldControlIds.Remove(newControlValue.ControlId);
                     continue;
                 }
-                var controlId = _resourceHeaderFile.AddControl(newControlValue);
-                SimpleLogger.GetLogger().WriteLog($"Added control '{newControlValue}' with id {controlId}");
+                var controlId = _resourceHeaderFile.AddControl(newControlValue.ControlId);
+                SimpleLogger.GetLogger().WriteLog($"Added control '{newControlValue.ControlId}' with id {controlId}");
                 resourceHaderChanged = true;
             }
             foreach (var removedOldControlId in _replaceOldControlIds)

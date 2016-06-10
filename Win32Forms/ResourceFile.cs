@@ -74,7 +74,7 @@ namespace Hiale.Win32Forms
 
         private void Write()
         {
-            File.WriteAllText(FileName, _fileContent);
+            File.WriteAllText(FileName, _fileContent, Encoding.Unicode);
         }
 
         public static string CreateBackup(string fileName)

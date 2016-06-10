@@ -44,7 +44,7 @@ namespace Hiale.Win32Forms
             File.WriteAllText(outputPath, fileContent);
         }
 
-        private void CreateInstructions(List<ControlData> controlData)
+        private static void CreateInstructions(IEnumerable<ControlData> controlData)
         {
             var stringBuilder = new StringBuilder();
             stringBuilder.AppendLine();
@@ -55,14 +55,15 @@ namespace Hiale.Win32Forms
             stringBuilder.AppendLine("1.\tInclude ControlResizer.h in the dialog source file: #include 'ControlResizer'");
             stringBuilder.AppendLine("2.\tCreate ControlResizer variable: ControlResizer resizer;");
             stringBuilder.AppendLine("3.\tExecute this code when the dialog is initialized (for example in the WM_INITDIALOG message handler, make sure the parameter hDlg points to the dialog handle):");
-            stringBuilder.AppendLine("\tresizer.init(hDlg);");
+			stringBuilder.AppendLine("3.\tPlease note: Controls which are inside a container (Panel, GroupBox, ...) are not fully supported yet and probably need adjustment!");
+			stringBuilder.AppendLine("\tresizer.init(hDlg);");
             foreach (var anchorStyle in controlData.Select(ProcessControlData).Where(anchorStyle => !string.IsNullOrEmpty(anchorStyle)))
             {
                 stringBuilder.AppendLine("\t" + anchorStyle);
             }
             stringBuilder.AppendLine("4.\tExecute this code when the dialog is resized (probably WM_SIZE):");
             stringBuilder.AppendLine("\tresizer.onResize();");
-            stringBuilder.AppendLine("\treturn (INT_PTR)TRUE");
+            stringBuilder.AppendLine("\treturn TRUE");
             stringBuilder.AppendLine("5.\tDone!");
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("See the Win32DialogTest project for a working sample.");

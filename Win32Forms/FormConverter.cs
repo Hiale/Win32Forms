@@ -10,7 +10,7 @@ namespace Hiale.Win32Forms
     public class FormConverter
     {
         private readonly StringBuilder _stringBuilder;
-        private List<Tuple<int, string>> _controls; 
+        private List<Tuple<Control, string, string>> _controls; 
         private readonly Dictionary<string, int> _commandIdMap;
         private readonly Type _formType;
         private readonly DialogUnitCalculation.CalculateDialogUnits _toDialogUnits;
@@ -26,7 +26,7 @@ namespace Hiale.Win32Forms
         public FormConverter(Type formType, DialogUnitCalculation.CalculateDialogUnits toDialogUnits, Func<string, bool, bool> isIdAvailable)
         {
             _stringBuilder = new StringBuilder();
-            _controls = new List<Tuple<int, string>>();
+            _controls = new List<Tuple<Control, string, string>>();
             _commandIdMap = new Dictionary<string, int>();
             _toDialogUnits = toDialogUnits;
             _isIdAvailable = isIdAvailable;
@@ -42,7 +42,7 @@ namespace Hiale.Win32Forms
             _result = new ConvertResult();
             _formInstance = (Form)Activator.CreateInstance(_formType);
             ProcessControl(_formInstance);
-            _controls = _controls.OrderBy(x => x.Item1).ToList();
+            _controls = _controls.OrderBy(x => x.Item1.TabIndex).ToList();
             foreach (var control in _controls)
             {
                 _stringBuilder.Append(control.Item2);
@@ -76,6 +76,9 @@ namespace Hiale.Win32Forms
             {
                 controlId = GetId(control, type.DefaultId);
                 var controlData = new ControlData(controlId) {Anchor = control.Anchor};
+                var partentId = GetParentId(control.Parent);
+                if (!string.IsNullOrEmpty(partentId))
+                    controlData.ParentId = partentId;
                 _result.NewControlValues.Add(controlData);
             }
             var controlText = control.Text.Replace("\"", "\"\"");
@@ -94,7 +97,7 @@ namespace Hiale.Win32Forms
                     controlBuilder.AppendLine($"{"ToDo"},{controlId},{CalculateDimension(control)}{style}");
                     break;
             }
-            _controls.Add(new Tuple<int, string>(control.TabIndex, controlBuilder.ToString()));
+            _controls.Add(new Tuple<Control, string, string>(control, controlBuilder.ToString(), controlId));
         }
 
         private void ProcessControl(Control control)
@@ -284,6 +287,11 @@ namespace Hiale.Win32Forms
             if (styles.Count > 0)
                 style = (leadingComma ? "," : string.Empty) + string.Join(" | ", styles);
             return style;
+        }
+
+        private string GetParentId(Control parent)
+        {
+            return (from control in _controls where Equals(control.Item1, parent) select control.Item3).FirstOrDefault();
         }
 
         private void ProcessForm(Form control)

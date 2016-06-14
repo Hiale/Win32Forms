@@ -6,7 +6,9 @@ namespace Hiale.Win32Forms
     {
         public string ControlId { get; }
 
-        public AnchorStyles Anchor { get; set; } 
+        public string ParentId { get; set; }
+
+        public AnchorStyles Anchor { get; set; }
 
         public ControlData(string controlId)
         {

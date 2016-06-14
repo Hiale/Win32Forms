@@ -139,3 +139,7 @@ BEGIN
     EDITTEXT        IDC_EDIT2,12,19,131,10
 END
 ```
+
+Win32 Dialog (resized)
+
+![Dialog MainForm](Screenshots/DialogMainFormResize.png)

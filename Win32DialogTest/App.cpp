@@ -24,17 +24,17 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		//Add controls with their anchor style.
 		//If the control is within a container (for example Group Box) use the overloaded method.
-		resizer->addControl(BTNCONVERT, AnchorStyle::Bottom | AnchorStyle::Right);
-		resizer->addControl(GRPOUTPUT, AnchorStyle::Bottom | AnchorStyle::Left | AnchorStyle::Right);
-		resizer->addControl(CHKRESIZE, GRPOUTPUT, AnchorStyle::Top | AnchorStyle::Left);
-		resizer->addControl(CHKREPLACE, GRPOUTPUT, AnchorStyle::Top | AnchorStyle::Left);
-		resizer->addControl(CHKUSECONTROLNAME, GRPOUTPUT, AnchorStyle::Top | AnchorStyle::Left);
-		resizer->addControl(BTNBROWSERESOURCE, GRPOUTPUT, AnchorStyle::Top | AnchorStyle::Right);
-		resizer->addControl(TXTRESOURCE, GRPOUTPUT, AnchorStyle::Top | AnchorStyle::Left | AnchorStyle::Right);
 		resizer->addControl(GRPINPUT, AnchorStyle::Top | AnchorStyle::Bottom | AnchorStyle::Left | AnchorStyle::Right);
-		resizer->addControl(LSTFORMS, GRPINPUT, AnchorStyle::Top | AnchorStyle::Bottom | AnchorStyle::Left | AnchorStyle::Right);
-		resizer->addControl(BTNBROWSEASSEMBLY, GRPINPUT, AnchorStyle::Top | AnchorStyle::Right);
 		resizer->addControl(TXTASSEMBLY, GRPINPUT, AnchorStyle::Top | AnchorStyle::Left | AnchorStyle::Right);
+		resizer->addControl(BTNBROWSEASSEMBLY, GRPINPUT, AnchorStyle::Top | AnchorStyle::Right);
+		resizer->addControl(LSTFORMS, GRPINPUT, AnchorStyle::Top | AnchorStyle::Bottom | AnchorStyle::Left | AnchorStyle::Right);
+		resizer->addControl(GRPOUTPUT, AnchorStyle::Bottom | AnchorStyle::Left | AnchorStyle::Right);
+		resizer->addControl(TXTRESOURCE, GRPOUTPUT, AnchorStyle::Top | AnchorStyle::Left | AnchorStyle::Right);
+		resizer->addControl(BTNBROWSERESOURCE, GRPOUTPUT, AnchorStyle::Top | AnchorStyle::Right);
+		resizer->addControl(CHKUSECONTROLNAME, GRPOUTPUT, AnchorStyle::Top | AnchorStyle::Left);
+		resizer->addControl(CHKREPLACE, GRPOUTPUT, AnchorStyle::Top | AnchorStyle::Left);
+		resizer->addControl(CHKRESIZE, GRPOUTPUT, AnchorStyle::Top | AnchorStyle::Left);
+		resizer->addControl(BTNCONVERT, AnchorStyle::Bottom | AnchorStyle::Right);
 		break;
 	case WM_COMMAND:
 		switch (LOWORD(wParam))

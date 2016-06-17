@@ -70,6 +70,7 @@
       <DependentUpon>ResultBox.cs</DependentUpon>
     </Compile>
     <Compile Include="SimpleLogger.cs" />
+    <Compile Include="Extension.cs" />
     <EmbeddedResource Include="MainForm.resx">
       <Generator>ResXFileCodeGeneratorEx</Generator>
       <DependentUpon>MainForm.cs</DependentUpon>

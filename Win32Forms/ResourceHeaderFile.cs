@@ -72,7 +72,7 @@ namespace Hiale.Win32Forms
 
         private void Read()
         {
-            _lines = File.ReadLines(FileName, Encoding.UTF8).ToList();
+            _lines = File.ReadLines(FileName, Extension.GetEncoding(FileName)).ToList();
             CreateLineMap();
         }
 

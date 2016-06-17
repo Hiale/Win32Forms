@@ -55,13 +55,11 @@ namespace Hiale.Win32Forms
             stringBuilder.AppendLine("Win32Forms - ControlResizer Instructions");
             stringBuilder.AppendLine("========================================");
             stringBuilder.AppendLine();
-            stringBuilder.AppendLine("1.\tInclude ControlResizer.h in the dialog source file: #include \"ControlResizer\"");
+            stringBuilder.AppendLine("1.\tInclude ControlResizer.h in the dialog source file: #include \"ControlResizer.h\"");
             stringBuilder.AppendLine("2.\tCreate ControlResizer variable: std::shared_ptr<ControlResizer> resizer;");
             stringBuilder.AppendLine(
                 "3.\tExecute this code when the dialog is initialized (for example in the WM_INITDIALOG message handler, make sure the parameter hDlg points to the dialog handle):");
-            stringBuilder.AppendLine(
-                "3.\tPlease note: Controls which are inside a container (Panel, GroupBox, ...) are not fully supported yet and probably need adjustment!");
-            stringBuilder.AppendLine("\tstd::make_shared<ControlResizer>(hDlg);");
+            stringBuilder.AppendLine("\tresizer = std::make_shared<ControlResizer>(hDlg);");
             foreach (
                 var anchorStyle in controlData.Select(ProcessControlData).Where(anchorStyle => !string.IsNullOrEmpty(anchorStyle)))
             {

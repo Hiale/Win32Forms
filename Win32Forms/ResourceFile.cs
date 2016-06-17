@@ -40,7 +40,7 @@ namespace Hiale.Win32Forms
 
         private void Read()
         {
-            _fileContent = File.ReadAllText(FileName, Encoding.UTF8);
+            _fileContent = File.ReadAllText(FileName, Extension.GetEncoding(FileName));
             FindHeaderFile();
         }
 
@@ -49,7 +49,7 @@ namespace Hiale.Win32Forms
             var assembly = Assembly.GetExecutingAssembly();
             var resourceName = GetType().Namespace + ".Template.Resource.rc";
             using (var stream = assembly.GetManifestResourceStream(resourceName))
-            using (var reader = new StreamReader(stream, Encoding.UTF8))
+            using (var reader = new StreamReader(stream, Encoding.Unicode))
             {
                 _fileContent = reader.ReadToEnd();
             }

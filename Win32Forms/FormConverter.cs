@@ -503,6 +503,9 @@ namespace Hiale.Win32Forms
 			}
 			if (control.Sorted)
 				styles.Add("LBS_SORT");
+
+			//size hack, height somehow does not fit 100%
+			control.ClientSize = new Size(control.Width, (int) (control.Height * 1.12));
 			AddControl(control, "LISTBOX", styles);
 		}
 

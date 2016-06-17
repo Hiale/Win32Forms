@@ -44,5 +44,17 @@ namespace Hiale.Win32Forms
             DialogResult = DialogResult.OK;
             Close();
         }
-    }
+
+		private void txtLog_KeyDown(object sender, KeyEventArgs e)
+		{
+			if (e.Control && e.KeyCode == Keys.A)
+			{
+				txtLog.SelectAll();
+			}
+			if (e.Control && e.KeyCode == Keys.A)
+			{
+				txtLog.Copy();
+			}
+		}
+	}
 }
